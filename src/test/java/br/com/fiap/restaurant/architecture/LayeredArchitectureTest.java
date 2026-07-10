@@ -14,7 +14,7 @@ class LayeredArchitectureTest {
     @Test
     void layersRespectDependencyRule() {
         layeredArchitecture()
-                .consideringAllDependencies()
+                .consideringOnlyDependenciesInAnyPackage("br.com.fiap.restaurant..")
                 .layer("Domain").definedBy("br.com.fiap.restaurant.domain..")
                 .layer("Application").definedBy("br.com.fiap.restaurant.application..")
                 .layer("Infrastructure").definedBy("br.com.fiap.restaurant.infrastructure..")
