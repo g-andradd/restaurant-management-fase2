@@ -25,4 +25,11 @@ class ArchitecturePurityTest {
                 .should().dependOnClassesThat().resideInAnyPackage("org.springframework..")
                 .check(classes);
     }
+
+    @Test
+    void applicationAndDomainMustNotDependOnJjwt() {
+        noClasses().that().resideInAnyPackage("..domain..", "..application..")
+                .should().dependOnClassesThat().resideInAnyPackage("io.jsonwebtoken..")
+                .check(classes);
+    }
 }

@@ -2,6 +2,7 @@ package br.com.fiap.restaurant.infrastructure.web.controller;
 
 import br.com.fiap.restaurant.application.dto.PageResult;
 import br.com.fiap.restaurant.application.dto.UserResult;
+import br.com.fiap.restaurant.application.port.TokenProvider;
 import br.com.fiap.restaurant.application.usecase.CreateUserUseCase;
 import br.com.fiap.restaurant.application.usecase.DeleteUserUseCase;
 import br.com.fiap.restaurant.application.usecase.GetUserByIdUseCase;
@@ -9,6 +10,8 @@ import br.com.fiap.restaurant.application.usecase.ListUsersUseCase;
 import br.com.fiap.restaurant.application.usecase.UpdateUserUseCase;
 import br.com.fiap.restaurant.domain.exception.EmailAlreadyExistsException;
 import br.com.fiap.restaurant.domain.exception.UserNotFoundException;
+import br.com.fiap.restaurant.infrastructure.security.ProblemDetailAccessDeniedHandler;
+import br.com.fiap.restaurant.infrastructure.security.ProblemDetailAuthenticationEntryPoint;
 import br.com.fiap.restaurant.infrastructure.security.SecurityConfig;
 import br.com.fiap.restaurant.infrastructure.web.dto.CreateUserRequest;
 import br.com.fiap.restaurant.infrastructure.web.dto.UpdateUserRequest;
@@ -18,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -36,12 +40,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, ProblemDetailAuthenticationEntryPoint.class, ProblemDetailAccessDeniedHandler.class})
 @ActiveProfiles("test")
+@WithMockUser
 class UserControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private TokenProvider tokenProvider;
 
     @Autowired
     private ObjectMapper objectMapper;
