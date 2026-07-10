@@ -12,6 +12,8 @@ public interface UserRepository {
 
     Optional<User> findById(UUID id);
 
+    Optional<User> findByLogin(String login);
+
     List<User> findAll(int page, int size);
 
     long count();
