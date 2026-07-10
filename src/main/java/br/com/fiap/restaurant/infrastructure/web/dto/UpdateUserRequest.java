@@ -1,0 +1,13 @@
+package br.com.fiap.restaurant.infrastructure.web.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record UpdateUserRequest(
+        @NotBlank String nome,
+        @NotBlank @Email String email,
+        @NotBlank String login,
+        @Size(min = 8) String senha,
+        String endereco) {
+}
