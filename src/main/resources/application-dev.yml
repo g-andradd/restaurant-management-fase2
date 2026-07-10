@@ -13,5 +13,5 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:change-me-dev-only-not-for-prod}
+    secret: ${JWT_SECRET:change-me-dev-only-not-for-prod-32c}
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}
