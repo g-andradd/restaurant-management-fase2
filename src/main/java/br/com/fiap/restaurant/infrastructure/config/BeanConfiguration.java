@@ -1,6 +1,8 @@
 package br.com.fiap.restaurant.infrastructure.config;
 
 import br.com.fiap.restaurant.application.port.PasswordEncoder;
+import br.com.fiap.restaurant.application.port.TokenProvider;
+import br.com.fiap.restaurant.application.usecase.AuthenticateUserUseCase;
 import br.com.fiap.restaurant.application.usecase.CreateUserUseCase;
 import br.com.fiap.restaurant.application.usecase.DeleteUserUseCase;
 import br.com.fiap.restaurant.application.usecase.GetUserByIdUseCase;
@@ -42,5 +44,12 @@ public class BeanConfiguration {
     @Bean
     public DeleteUserUseCase deleteUserUseCase(UserRepository userRepository) {
         return new DeleteUserUseCase(userRepository);
+    }
+
+    @Bean
+    public AuthenticateUserUseCase authenticateUserUseCase(UserRepository userRepository,
+                                                             PasswordEncoder passwordEncoder,
+                                                             TokenProvider tokenProvider) {
+        return new AuthenticateUserUseCase(userRepository, passwordEncoder, tokenProvider);
     }
 }
