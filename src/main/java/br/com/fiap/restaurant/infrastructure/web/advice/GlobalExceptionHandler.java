@@ -1,5 +1,6 @@
 package br.com.fiap.restaurant.infrastructure.web.advice;
 
+import br.com.fiap.restaurant.application.exception.InvalidCredentialsException;
 import br.com.fiap.restaurant.domain.exception.DomainException;
 import br.com.fiap.restaurant.domain.exception.EmailAlreadyExistsException;
 import br.com.fiap.restaurant.domain.exception.LoginAlreadyExistsException;
@@ -22,6 +23,7 @@ public class GlobalExceptionHandler {
     private static final URI TYPE_NOT_FOUND = URI.create("urn:problem-type:not-found");
     private static final URI TYPE_CONFLICT = URI.create("urn:problem-type:conflict");
     private static final URI TYPE_BUSINESS_RULE_VIOLATION = URI.create("urn:problem-type:business-rule-violation");
+    private static final URI TYPE_UNAUTHORIZED = URI.create("urn:problem-type:unauthorized");
     private static final URI TYPE_INTERNAL_ERROR = URI.create("urn:problem-type:internal-error");
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -51,6 +53,14 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problemDetail.setTitle("Conflict");
         problemDetail.setType(TYPE_CONFLICT);
+        return problemDetail;
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problemDetail.setTitle("Unauthorized");
+        problemDetail.setType(TYPE_UNAUTHORIZED);
         return problemDetail;
     }
 

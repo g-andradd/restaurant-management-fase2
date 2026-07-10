@@ -94,3 +94,57 @@
   simples; `infrastructure/config/BeanConfiguration` é quem os expõe como
   `@Bean`, mantendo a camada de aplicação livre de dependências de
   framework (verificado por `ArchitecturePurityTest`).
+
+## 2026-07-08 — M02: Autenticação JWT
+
+- **JJWT já estava no `pom.xml` desde o M00, sem uso até agora**: o M02 não
+  adicionou nenhuma dependência nova — só passou a usar `jjwt-api`/
+  `jjwt-impl`/`jjwt-jackson` 0.12.6 que já estavam declarados.
+- **`application-test.yml` já tinha um segredo de JWT** (adicionado no
+  ajuste de perfil de teste do M00), com 40 caracteres (320 bits) — acima
+  do mínimo de 256 bits exigido por HS256. Nenhuma mudança necessária ali.
+- **Bug latente encontrado no `application-dev.yml`**: o valor padrão de
+  fallback `${JWT_SECRET:change-me-dev-only-not-for-prod}` tinha só 31
+  caracteres (248 bits) — abaixo do mínimo de 256 bits do HS256. Era inerte
+  até agora (JJWT não era usado), mas quebraria `./mvnw spring-boot:run`
+  local sem um `.env` carregado assim que a assinatura de token entrasse
+  em uso. Corrigido para 35 caracteres.
+- **`InvalidCredentialsException`/`InvalidTokenException` em
+  `application/exception`, não em `domain.exception`**: a família
+  `domain.exception` existente representa violações de invariantes do
+  próprio agregado `User` (email/login duplicado, não encontrado). "Senha
+  errada"/"token inválido" são falhas da orquestração do caso de uso de
+  login, não invariantes que o `User` conhece — por isso ficam na camada
+  de aplicação, como `RuntimeException` simples (não estendem
+  `DomainException`).
+- **`sub` do JWT é o UUID do usuário, não o `login`**: `login` é mutável
+  (`User.atualizarDados` permite trocá-lo), então usar o `id` imutável como
+  `sub` mantém o token válido mesmo que o login mude depois de emitido. O
+  `login` ainda vai como claim customizado para legibilidade/debug.
+- **`Keys.hmacShaKeyFor` do próprio JJWT valida o tamanho mínimo da
+  chave** — não foi implementada nenhuma checagem manual de tamanho;
+  `WeakKeyException` (não verificada) já falha o startup do contexto
+  Spring com uma mensagem clara se o segredo for curto demais.
+- **`JwtAuthenticationFilter` não é `@Component`**: é construído
+  diretamente dentro de `SecurityConfig` (recebendo `TokenProvider` já
+  injetado). Anotar um `Filter` com `@Component` faria o Spring Boot
+  registrá-lo automaticamente como filtro de servlet global, executando-o
+  duas vezes (uma via a chain do Spring Security, outra via o
+  registration bean automático) — problema clássico e evitado aqui.
+- **`AuthenticationEntryPoint`/`AccessDeniedHandler` escrevem
+  `ProblemDetail` manualmente**: `AuthenticationException`/
+  `AccessDeniedException` são lançadas dentro da própria chain de filtros
+  do Spring Security (pelo `AuthorizationFilter`) e capturadas ali mesmo
+  pelo `ExceptionTranslationFilter`, que delega para essas duas classes —
+  tudo dentro da camada de filtros de servlet, antes de a requisição
+  chegar ao `DispatcherServlet`. Por isso não são métodos
+  `@ExceptionHandler`: `@RestControllerAdvice` só intercepta exceções
+  lançadas durante o dispatch normal do Spring MVC, que esse caminho nunca
+  alcança. Ambas serializam `ProblemDetail` via `ObjectMapper` injetado,
+  mantendo o mesmo formato (`type`/`title`/`status`/`detail`) usado pelo
+  `GlobalExceptionHandler`.
+- **Swagger/`api-docs` deixados `permitAll()` deliberadamente**: decisão
+  consciente para facilitar a avaliação acadêmica do projeto (acesso
+  direto ao Swagger UI sem precisar logar antes). Revisitar antes de
+  qualquer exposição real do serviço — normalmente essas rotas também
+  deveriam ficar atrás de autenticação ou de uma rede restrita.

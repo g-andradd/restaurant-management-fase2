@@ -48,6 +48,11 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public Optional<User> findByLogin(String login) {
+        return jpaRepository.findByLogin(login).map(UserEntityMapper::toDomain);
+    }
+
+    @Override
     public List<User> findAll(int page, int size) {
         return jpaRepository.findAll(PageRequest.of(page, size)).getContent().stream()
                 .map(UserEntityMapper::toDomain)
