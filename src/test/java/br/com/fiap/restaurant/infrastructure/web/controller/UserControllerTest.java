@@ -2,6 +2,7 @@ package br.com.fiap.restaurant.infrastructure.web.controller;
 
 import br.com.fiap.restaurant.application.dto.PageResult;
 import br.com.fiap.restaurant.application.dto.UserResult;
+import br.com.fiap.restaurant.application.dto.UserTypeResult;
 import br.com.fiap.restaurant.application.port.TokenProvider;
 import br.com.fiap.restaurant.application.usecase.CreateUserUseCase;
 import br.com.fiap.restaurant.application.usecase.DeleteUserUseCase;
@@ -45,6 +46,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WithMockUser
 class UserControllerTest {
 
+    private static final UUID USER_TYPE_ID = UUID.randomUUID();
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -71,7 +74,8 @@ class UserControllerTest {
 
     private static UserResult sampleResult(UUID id) {
         LocalDateTime now = LocalDateTime.now();
-        return new UserResult(id, "Ana Silva", "ana@example.com", "ana.silva", null, now, now);
+        return new UserResult(id, "Ana Silva", "ana@example.com", "ana.silva", null,
+                new UserTypeResult(USER_TYPE_ID, "Cliente"), now, now);
     }
 
     @Test
@@ -79,19 +83,20 @@ class UserControllerTest {
         UUID id = UUID.randomUUID();
         when(createUserUseCase.execute(any())).thenReturn(sampleResult(id));
 
-        var request = new CreateUserRequest("Ana Silva", "ana@example.com", "ana.silva", "senha123", null);
+        var request = new CreateUserRequest("Ana Silva", "ana@example.com", "ana.silva", "senha123", null, USER_TYPE_ID);
 
         mockMvc.perform(post("/api/v1/users")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(id.toString()))
-                .andExpect(jsonPath("$.email").value("ana@example.com"));
+                .andExpect(jsonPath("$.email").value("ana@example.com"))
+                .andExpect(jsonPath("$.userType.nome").value("Cliente"));
     }
 
     @Test
     void createReturns400OnBlankNome() throws Exception {
-        var request = new CreateUserRequest(" ", "ana@example.com", "ana.silva", "senha123", null);
+        var request = new CreateUserRequest(" ", "ana@example.com", "ana.silva", "senha123", null, USER_TYPE_ID);
 
         mockMvc.perform(post("/api/v1/users")
                         .contentType("application/json")
@@ -105,7 +110,7 @@ class UserControllerTest {
     void createReturns409OnDuplicateEmail() throws Exception {
         when(createUserUseCase.execute(any())).thenThrow(new EmailAlreadyExistsException("ana@example.com"));
 
-        var request = new CreateUserRequest("Ana Silva", "ana@example.com", "ana.silva", "senha123", null);
+        var request = new CreateUserRequest("Ana Silva", "ana@example.com", "ana.silva", "senha123", null, USER_TYPE_ID);
 
         mockMvc.perform(post("/api/v1/users")
                         .contentType("application/json")
@@ -151,7 +156,7 @@ class UserControllerTest {
         UUID id = UUID.randomUUID();
         when(updateUserUseCase.execute(any())).thenReturn(sampleResult(id));
 
-        var request = new UpdateUserRequest("Ana Silva", "ana@example.com", "ana.silva", null, null);
+        var request = new UpdateUserRequest("Ana Silva", "ana@example.com", "ana.silva", null, null, USER_TYPE_ID);
 
         mockMvc.perform(put("/api/v1/users/{id}", id)
                         .contentType("application/json")
