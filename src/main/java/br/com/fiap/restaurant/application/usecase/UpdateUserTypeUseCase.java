@@ -1,0 +1,30 @@
+package br.com.fiap.restaurant.application.usecase;
+
+import br.com.fiap.restaurant.application.dto.UpdateUserTypeCommand;
+import br.com.fiap.restaurant.application.dto.UserTypeResult;
+import br.com.fiap.restaurant.domain.exception.UserTypeNameAlreadyExistsException;
+import br.com.fiap.restaurant.domain.exception.UserTypeNotFoundException;
+import br.com.fiap.restaurant.domain.model.UserType;
+import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
+
+public class UpdateUserTypeUseCase {
+
+    private final UserTypeRepository userTypeRepository;
+
+    public UpdateUserTypeUseCase(UserTypeRepository userTypeRepository) {
+        this.userTypeRepository = userTypeRepository;
+    }
+
+    public UserTypeResult execute(UpdateUserTypeCommand command) {
+        UserType userType = userTypeRepository.findById(command.id())
+                .orElseThrow(() -> new UserTypeNotFoundException(command.id()));
+
+        if (userTypeRepository.existsByNomeAndIdNot(command.nome(), command.id())) {
+            throw new UserTypeNameAlreadyExistsException(command.nome());
+        }
+
+        userType.renomear(command.nome());
+        UserType saved = userTypeRepository.save(userType);
+        return UserTypeResult.from(saved);
+    }
+}

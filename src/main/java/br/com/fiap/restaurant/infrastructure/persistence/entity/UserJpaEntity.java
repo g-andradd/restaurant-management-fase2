@@ -31,6 +31,9 @@ public class UserJpaEntity {
     @Column(name = "endereco")
     private String endereco;
 
+    @Column(name = "user_type_id", nullable = false)
+    private UUID userTypeId;
+
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
 
@@ -42,13 +45,15 @@ public class UserJpaEntity {
     }
 
     public UserJpaEntity(UUID id, String nome, String email, String login, String senhaHash,
-                          String endereco, LocalDateTime dataCriacao, LocalDateTime dataUltimaAlteracao) {
+                          String endereco, UUID userTypeId, LocalDateTime dataCriacao,
+                          LocalDateTime dataUltimaAlteracao) {
         this.id = id;
         this.nome = nome;
         this.email = email;
         this.login = login;
         this.senhaHash = senhaHash;
         this.endereco = endereco;
+        this.userTypeId = userTypeId;
         this.dataCriacao = dataCriacao;
         this.dataUltimaAlteracao = dataUltimaAlteracao;
     }
@@ -75,6 +80,10 @@ public class UserJpaEntity {
 
     public String getEndereco() {
         return endereco;
+    }
+
+    public UUID getUserTypeId() {
+        return userTypeId;
     }
 
     public LocalDateTime getDataCriacao() {

@@ -26,7 +26,7 @@ class DeleteUserUseCaseTest {
     @Test
     void deletesWhenUserExists() {
         var useCase = new DeleteUserUseCase(userRepository);
-        User user = User.create("Ana Silva", "ana@example.com", "ana.silva", "hash", null);
+        User user = User.create("Ana Silva", "ana@example.com", "ana.silva", "hash", null, UUID.randomUUID());
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         useCase.execute(user.getId());

@@ -26,5 +26,7 @@ public interface UserRepository {
 
     boolean existsByLoginAndIdNot(String login, UUID id);
 
+    boolean existsByUserTypeId(UUID userTypeId);
+
     void deleteById(UUID id);
 }

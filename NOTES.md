@@ -178,3 +178,101 @@
   vira dono de restaurante sem nenhuma verificação) ou se todo
   auto-registro entra como "Cliente" por padrão, com a promoção a "Dono de
   Restaurante" exigindo um fluxo separado/mais controlado.
+
+## 2026-07-11 — M03: UserType (Tipo de Usuário)
+
+- **Decisão (b) mantida como estava, com a ressalva registrada
+  honestamente**: o tipo é escolhido livremente no auto-registro,
+  incluindo "Dono de Restaurante", sem role de admin e sem fluxo de
+  aprovação — fora do escopo da Fase 2. Considerou-se forçar "Cliente" no
+  signup e permitir troca só por um usuário já autenticado, mas isso seria
+  teatro de segurança (qualquer usuário autenticado ainda poderia se
+  promover livremente) — e uma role ADMIN de verdade reintroduziria o
+  mesmo problema de bootstrap do fix/M02 (quem cria o primeiro admin?).
+  Preferimos documentar a limitação claramente a fingir um controle que
+  não existe de fato.
+- **`UserType` é agregado próprio, `User` referencia por `userTypeId`
+  (UUID) só**: o brief exige CRUD independente de `UserType`
+  (`GET /user-types`, etc., sem nenhum `User` envolvido) — sinal clássico
+  de que precisa de identidade e ciclo de vida próprios, não é um VO
+  dentro de `User`. Referência só por id segue a mesma disciplina que
+  `Restaurant → User` (owner) já usa no spec de produto.
+- **`user_type_id` NOT NULL, com backfill para "Cliente"**: three-step
+  migration (add nullable → backfill → set NOT NULL) no V3, mais seguro
+  para uma tabela que pode já ter linhas. Backfill para "Cliente" (não
+  "Dono de Restaurante") é o padrão conservador — ninguém vira dono de
+  restaurante silenciosamente por causa de uma migration.
+- **Sem endpoint dedicado para associar tipo a usuário existente**:
+  reaproveita `PUT /api/v1/users/{id}` (agora com `userTypeId`
+  obrigatório), cobrindo "associar a um usuário existente" sem rota nova —
+  YAGNI.
+- **`UserResponse`/`UserResult` embutem `{ id, nome }` do tipo, não só o
+  id** (override do plano original): `GetUserByIdUseCase` e
+  `ListUsersUseCase` passaram a depender de `UserTypeRepository` por causa
+  disso. Para evitar N+1 na listagem, `UserTypeRepository` ganhou
+  `findAllById(Collection<UUID>)` e `ListUsersUseCase` resolve os tipos
+  distintos da página inteira em UMA chamada, nunca um `findById` por
+  usuário — testado explicitamente (`ListUsersUseCaseTest` verifica que
+  `findAllById` é chamado exatamente uma vez).
+- **`userTypeId` desconhecido no corpo de `POST`/`PUT /users` → 422, não
+  404** (override do plano original): 404 seria ambíguo — o cliente pode
+  ler como "o endpoint /users não existe". Nova exceção
+  `InvalidUserTypeReferenceException` (em `domain.exception`, mas
+  lançada pelos use cases de `User`) mapeia para 422. `UserTypeNotFoundException`
+  → 404 continua existindo, mas só para `GET`/`PUT`/`DELETE
+  /api/v1/user-types/{id}`, onde o recurso ausente É o alvo da própria
+  URL. **Ver correção datada de 2026-07-12 abaixo**: essa regra
+  inicialmente só era garantida pelo fallback genérico de
+  `DomainException`, sem handler nem teste dedicados.
+- **`GET /api/v1/user-types/**` é público**: sem isso, um auto-registro
+  anônimo não teria como descobrir ids de tipo válidos via API (só via
+  documentação/UUID fixo). `POST`/`PUT`/`DELETE` continuam autenticados.
+- **Armadilha de corretude documentada para o M04**: a claim `"userType"`
+  no JWT é um snapshot do momento do login — `JwtAuthenticationFilter`
+  nunca consulta o banco por requisição (decisão do M02), então, se o tipo
+  do usuário for trocado depois do login, o token antigo continua com o
+  nome do tipo velho até expirar. Qualquer decisão de autorização (a regra
+  "só Dono de Restaurante pode ser dono de restaurante" do M04, em
+  especial) TEM que reler o tipo atual do banco via
+  `UserRepository`/`UserTypeRepository` — nunca confiar nessa claim para
+  além de exibição/conveniência. Documentado no Javadoc de
+  `AuthenticateUserUseCase` e em `specs/modules/03-user-type.md`.
+- **Limitação conhecida, aceita e não corrigida**: apagar todos os
+  `UserType` enquanto nenhum `User` existir quebraria o auto-registro (não
+  haveria `userTypeId` válido para o signup público criar o primeiro
+  usuário, e criar um novo tipo via `POST /api/v1/user-types` exige
+  token). Isso exige uma ação destrutiva deliberada (apagar os dois tipos
+  semeados) e só é possível enquanto nenhum usuário existe — assim que
+  existir ao menos um usuário, `DeleteUserTypeUseCase` bloqueia a exclusão
+  do tipo em uso (409). Cenário de baixíssima probabilidade, documentado
+  aqui em vez de resolvido com mais complexidade (ex.: proteger os dois
+  tipos semeados contra exclusão).
+
+## 2026-07-12 — fix/M03: 422 sem handler nem teste próprios
+
+- **Achado de auditoria**: `InvalidUserTypeReferenceException` já
+  devolvia 422 corretamente, mas só por cair no fallback genérico
+  `@ExceptionHandler(DomainException.class)` (o mesmo que o M01 introduziu
+  como rede de segurança para exceções de domínio futuras sem handler
+  específico) — e nenhum teste em toda a suíte chamava
+  `isUnprocessableEntity()`. A decisão deliberada "422, não 404" estava
+  protegida por nada: bastaria o M04 adicionar ou reordenar um handler de
+  exceção de `Restaurant` para mudar esse status silenciosamente, sem
+  quebrar nenhum teste.
+- **Regra explícita agora, ver `specs/modules/03-user-type.md`**: um
+  `UserType` inexistente é 404 quando é o próprio recurso endereçado pela
+  URL, e 422 quando é uma referência dentro do corpo de uma requisição.
+  Corrigido com: (1) `GlobalExceptionHandler.handleInvalidUserTypeReference`
+  — handler dedicado para `InvalidUserTypeReferenceException`, não mais
+  dependente do fallback genérico; (2) testes que afirmam
+  `isUnprocessableEntity()` explicitamente em `UserControllerTest`
+  (create/update com `userTypeId` inexistente) e no round-trip HTTP
+  completo em `UserTypeIntegrationTest`
+  (`publicSignupWithNonExistentUserTypeIdReturns422`); (3) o teste de 404
+  em `UserTypeControllerTest.getByIdReturns404WhenNotFound` reforçado com
+  as mesmas asserções de forma (`type`/`title`/`status`/`detail`) para
+  deixar o contraste 404-vs-422 direto de comparar.
+- **Padrão a repetir no M04**: qualquer referência cross-aggregate nova
+  (ex.: `Restaurant.ownerId` apontando para um `User` inexistente) deveria
+  seguir o mesmo molde — exceção dedicada + handler explícito + teste
+  afirmando o status específico, em vez de confiar no fallback genérico.

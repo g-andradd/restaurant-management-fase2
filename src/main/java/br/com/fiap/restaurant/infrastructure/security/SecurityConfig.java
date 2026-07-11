@@ -13,10 +13,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * JWT-based stateless authentication: POST /api/v1/auth/login,
  * POST /api/v1/users (public self-registration - otherwise a freshly
  * started app has no way to create its first user, since a token can only
- * be obtained by logging in as a user that doesn't exist yet), and the
- * springdoc UI are open. Everything else requires a valid Bearer token.
- * No role-based authorization yet (that's M03) - JwtAuthenticationFilter
- * only establishes an authenticated principal with no authorities.
+ * be obtained by logging in as a user that doesn't exist yet), GET on
+ * /api/v1/user-types/** (lets that same anonymous signup discover valid
+ * type ids), and the springdoc UI are open. Everything else requires a
+ * valid Bearer token. No role-based authorization yet (that's M04+) -
+ * JwtAuthenticationFilter only establishes an authenticated principal with
+ * no authorities.
  */
 @Configuration
 public class SecurityConfig {
@@ -47,6 +49,10 @@ public class SecurityConfig {
                         // accidentally open the rest of /users. GET/PUT/DELETE on
                         // /api/v1/users/** stay authenticated via anyRequest() below.
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
+                        // Read-only: lets an anonymous signup discover valid user
+                        // type ids without a token. Managing types (POST/PUT/
+                        // DELETE) stays authenticated below via anyRequest().
+                        .requestMatchers(HttpMethod.GET, "/api/v1/user-types", "/api/v1/user-types/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions

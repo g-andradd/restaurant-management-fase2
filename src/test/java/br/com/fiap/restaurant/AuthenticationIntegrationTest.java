@@ -23,6 +23,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -37,6 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Testcontainers
 class AuthenticationIntegrationTest {
+
+    private static final UUID CLIENTE_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     @Container
     @ServiceConnection
@@ -75,7 +78,7 @@ class AuthenticationIntegrationTest {
     @Test
     void coldStartSelfRegistrationWorksThroughHttpAloneWithNoDirectSeeding() throws Exception {
         var createRequest = new CreateUserRequest(
-                "Gabriela Reis", "gabriela@example.com", "gabriela.reis", "senha123", null);
+                "Gabriela Reis", "gabriela@example.com", "gabriela.reis", "senha123", null, CLIENTE_ID);
 
         var createResult = mockMvc.perform(post("/api/v1/users")
                         .contentType("application/json")
@@ -105,7 +108,7 @@ class AuthenticationIntegrationTest {
     @Test
     void protectedEndpointReturns401WithoutToken() throws Exception {
         var created = createUserUseCase.execute(
-                new CreateUserCommand("Ana Silva", "ana@example.com", "ana.silva", "senha123", null));
+                new CreateUserCommand("Ana Silva", "ana@example.com", "ana.silva", "senha123", null, CLIENTE_ID));
 
         assertProblemDetailUnauthorized(mockMvc.perform(get("/api/v1/users/{id}", created.id())));
     }
@@ -113,7 +116,7 @@ class AuthenticationIntegrationTest {
     @Test
     void protectedEndpointReturns401WithGarbageToken() throws Exception {
         var created = createUserUseCase.execute(
-                new CreateUserCommand("Bruno Souza", "bruno@example.com", "bruno.souza", "senha123", null));
+                new CreateUserCommand("Bruno Souza", "bruno@example.com", "bruno.souza", "senha123", null, CLIENTE_ID));
 
         assertProblemDetailUnauthorized(mockMvc.perform(get("/api/v1/users/{id}", created.id())
                 .header("Authorization", "Bearer this.is.not.a.valid.jwt")));
@@ -122,7 +125,7 @@ class AuthenticationIntegrationTest {
     @Test
     void protectedEndpointReturns401WithExpiredToken() throws Exception {
         var created = createUserUseCase.execute(
-                new CreateUserCommand("Carla Dias", "carla@example.com", "carla.dias", "senha123", null));
+                new CreateUserCommand("Carla Dias", "carla@example.com", "carla.dias", "senha123", null, CLIENTE_ID));
 
         // Same signing key as the running app, but expired the instant it's minted.
         var expiredTokenProvider = new JwtTokenProvider(new JwtProperties(jwtProperties.secret(), -1000L));
@@ -135,9 +138,9 @@ class AuthenticationIntegrationTest {
     @Test
     void updateWithoutTokenReturns401() throws Exception {
         var created = createUserUseCase.execute(
-                new CreateUserCommand("Elisa Nunes", "elisa@example.com", "elisa.nunes", "senha123", null));
+                new CreateUserCommand("Elisa Nunes", "elisa@example.com", "elisa.nunes", "senha123", null, CLIENTE_ID));
 
-        var updateRequest = new UpdateUserRequest("Elisa N.", "elisa@example.com", "elisa.nunes", null, null);
+        var updateRequest = new UpdateUserRequest("Elisa N.", "elisa@example.com", "elisa.nunes", null, null, CLIENTE_ID);
 
         assertProblemDetailUnauthorized(mockMvc.perform(put("/api/v1/users/{id}", created.id())
                 .contentType("application/json")
@@ -147,7 +150,7 @@ class AuthenticationIntegrationTest {
     @Test
     void deleteWithoutTokenReturns401() throws Exception {
         var created = createUserUseCase.execute(
-                new CreateUserCommand("Fabio Rocha", "fabio@example.com", "fabio.rocha", "senha123", null));
+                new CreateUserCommand("Fabio Rocha", "fabio@example.com", "fabio.rocha", "senha123", null, CLIENTE_ID));
 
         assertProblemDetailUnauthorized(mockMvc.perform(delete("/api/v1/users/{id}", created.id())));
     }
@@ -155,7 +158,7 @@ class AuthenticationIntegrationTest {
     @Test
     void protectedEndpointReturns200WithValidBearerToken() throws Exception {
         var created = createUserUseCase.execute(
-                new CreateUserCommand("Diego Melo", "diego@example.com", "diego.melo", "senha123", null));
+                new CreateUserCommand("Diego Melo", "diego@example.com", "diego.melo", "senha123", null, CLIENTE_ID));
 
         var loginRequest = new LoginRequest("diego.melo", "senha123");
         var loginResult = mockMvc.perform(post("/api/v1/auth/login")
