@@ -5,6 +5,9 @@ import br.com.fiap.restaurant.domain.exception.DomainException;
 import br.com.fiap.restaurant.domain.exception.EmailAlreadyExistsException;
 import br.com.fiap.restaurant.domain.exception.LoginAlreadyExistsException;
 import br.com.fiap.restaurant.domain.exception.UserNotFoundException;
+import br.com.fiap.restaurant.domain.exception.UserTypeInUseException;
+import br.com.fiap.restaurant.domain.exception.UserTypeNameAlreadyExistsException;
+import br.com.fiap.restaurant.domain.exception.UserTypeNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.validation.FieldError;
@@ -48,7 +51,16 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
-    @ExceptionHandler({EmailAlreadyExistsException.class, LoginAlreadyExistsException.class})
+    @ExceptionHandler(UserTypeNotFoundException.class)
+    public ProblemDetail handleUserTypeNotFound(UserTypeNotFoundException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problemDetail.setTitle("Resource Not Found");
+        problemDetail.setType(TYPE_NOT_FOUND);
+        return problemDetail;
+    }
+
+    @ExceptionHandler({EmailAlreadyExistsException.class, LoginAlreadyExistsException.class,
+            UserTypeNameAlreadyExistsException.class, UserTypeInUseException.class})
     public ProblemDetail handleConflict(DomainException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problemDetail.setTitle("Conflict");
