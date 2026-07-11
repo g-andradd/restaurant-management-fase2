@@ -218,11 +218,12 @@
   404** (override do plano original): 404 seria ambíguo — o cliente pode
   ler como "o endpoint /users não existe". Nova exceção
   `InvalidUserTypeReferenceException` (em `domain.exception`, mas
-  lançada pelos use cases de `User`) cai automaticamente no handler
-  genérico `DomainException` → 422 já existente, sem precisar de handler
-  novo. `UserTypeNotFoundException` → 404 continua existindo, mas só para
-  `GET`/`PUT`/`DELETE /api/v1/user-types/{id}`, onde o recurso ausente É o
-  alvo da própria URL.
+  lançada pelos use cases de `User`) mapeia para 422. `UserTypeNotFoundException`
+  → 404 continua existindo, mas só para `GET`/`PUT`/`DELETE
+  /api/v1/user-types/{id}`, onde o recurso ausente É o alvo da própria
+  URL. **Ver correção datada de 2026-07-12 abaixo**: essa regra
+  inicialmente só era garantida pelo fallback genérico de
+  `DomainException`, sem handler nem teste dedicados.
 - **`GET /api/v1/user-types/**` é público**: sem isso, um auto-registro
   anônimo não teria como descobrir ids de tipo válidos via API (só via
   documentação/UUID fixo). `POST`/`PUT`/`DELETE` continuam autenticados.
@@ -246,3 +247,32 @@
   do tipo em uso (409). Cenário de baixíssima probabilidade, documentado
   aqui em vez de resolvido com mais complexidade (ex.: proteger os dois
   tipos semeados contra exclusão).
+
+## 2026-07-12 — fix/M03: 422 sem handler nem teste próprios
+
+- **Achado de auditoria**: `InvalidUserTypeReferenceException` já
+  devolvia 422 corretamente, mas só por cair no fallback genérico
+  `@ExceptionHandler(DomainException.class)` (o mesmo que o M01 introduziu
+  como rede de segurança para exceções de domínio futuras sem handler
+  específico) — e nenhum teste em toda a suíte chamava
+  `isUnprocessableEntity()`. A decisão deliberada "422, não 404" estava
+  protegida por nada: bastaria o M04 adicionar ou reordenar um handler de
+  exceção de `Restaurant` para mudar esse status silenciosamente, sem
+  quebrar nenhum teste.
+- **Regra explícita agora, ver `specs/modules/03-user-type.md`**: um
+  `UserType` inexistente é 404 quando é o próprio recurso endereçado pela
+  URL, e 422 quando é uma referência dentro do corpo de uma requisição.
+  Corrigido com: (1) `GlobalExceptionHandler.handleInvalidUserTypeReference`
+  — handler dedicado para `InvalidUserTypeReferenceException`, não mais
+  dependente do fallback genérico; (2) testes que afirmam
+  `isUnprocessableEntity()` explicitamente em `UserControllerTest`
+  (create/update com `userTypeId` inexistente) e no round-trip HTTP
+  completo em `UserTypeIntegrationTest`
+  (`publicSignupWithNonExistentUserTypeIdReturns422`); (3) o teste de 404
+  em `UserTypeControllerTest.getByIdReturns404WhenNotFound` reforçado com
+  as mesmas asserções de forma (`type`/`title`/`status`/`detail`) para
+  deixar o contraste 404-vs-422 direto de comparar.
+- **Padrão a repetir no M04**: qualquer referência cross-aggregate nova
+  (ex.: `Restaurant.ownerId` apontando para um `User` inexistente) deveria
+  seguir o mesmo molde — exceção dedicada + handler explícito + teste
+  afirmando o status específico, em vez de confiar no fallback genérico.

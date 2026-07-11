@@ -106,12 +106,20 @@ class UserTypeControllerTest {
 
     @Test
     void getByIdReturns404WhenNotFound() throws Exception {
+        // Contrast with UserControllerTest's create/updateReturns422OnUnknownUserTypeId:
+        // a missing UserType is 404 here because it IS the URL's own target,
+        // vs. 422 when the same missing-type condition is just a reference
+        // inside a POST/PUT /users request body.
         UUID id = UUID.randomUUID();
         when(getUserTypeByIdUseCase.execute(id)).thenThrow(new UserTypeNotFoundException(id));
 
         mockMvc.perform(get("/api/v1/user-types/{id}", id))
                 .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type").exists())
+                .andExpect(jsonPath("$.title").exists())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").exists());
     }
 
     @Test

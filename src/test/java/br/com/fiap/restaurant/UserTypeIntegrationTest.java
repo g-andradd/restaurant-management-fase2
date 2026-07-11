@@ -111,6 +111,26 @@ class UserTypeIntegrationTest {
     }
 
     @Test
+    void publicSignupWithNonExistentUserTypeIdReturns422() throws Exception {
+        // Contrast with a direct GET /user-types/{unknown-id}, which is 404:
+        // here the same "no such type" condition is a reference inside a
+        // POST /users body, so it must be 422 - asserted end-to-end through
+        // the public signup endpoint, not just at the use-case/unit level.
+        var createRequest = new CreateUserRequest("Karen Alves", "karen@example.com", "karen.alves",
+                "senha123", null, UUID.randomUUID());
+
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type").exists())
+                .andExpect(jsonPath("$.title").exists())
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
     void deletingAnInUseUserTypeReturns409() throws Exception {
         var createRequest = new CreateUserRequest("Julia Reis", "julia@example.com", "julia.reis",
                 "senha123", null, CLIENTE_ID);

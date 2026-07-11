@@ -10,6 +10,7 @@ import br.com.fiap.restaurant.application.usecase.GetUserByIdUseCase;
 import br.com.fiap.restaurant.application.usecase.ListUsersUseCase;
 import br.com.fiap.restaurant.application.usecase.UpdateUserUseCase;
 import br.com.fiap.restaurant.domain.exception.EmailAlreadyExistsException;
+import br.com.fiap.restaurant.domain.exception.InvalidUserTypeReferenceException;
 import br.com.fiap.restaurant.domain.exception.UserNotFoundException;
 import br.com.fiap.restaurant.infrastructure.security.ProblemDetailAccessDeniedHandler;
 import br.com.fiap.restaurant.infrastructure.security.ProblemDetailAuthenticationEntryPoint;
@@ -120,6 +121,24 @@ class UserControllerTest {
     }
 
     @Test
+    void createReturns422OnUnknownUserTypeId() throws Exception {
+        UUID bogusTypeId = UUID.randomUUID();
+        when(createUserUseCase.execute(any())).thenThrow(new InvalidUserTypeReferenceException(bogusTypeId));
+
+        var request = new CreateUserRequest("Ana Silva", "ana@example.com", "ana.silva", "senha123", null, bogusTypeId);
+
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type").exists())
+                .andExpect(jsonPath("$.title").exists())
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
     void getByIdReturns200() throws Exception {
         UUID id = UUID.randomUUID();
         when(getUserByIdUseCase.execute(id)).thenReturn(sampleResult(id));
@@ -163,6 +182,25 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id.toString()));
+    }
+
+    @Test
+    void updateReturns422OnUnknownUserTypeId() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID bogusTypeId = UUID.randomUUID();
+        when(updateUserUseCase.execute(any())).thenThrow(new InvalidUserTypeReferenceException(bogusTypeId));
+
+        var request = new UpdateUserRequest("Ana Silva", "ana@example.com", "ana.silva", null, null, bogusTypeId);
+
+        mockMvc.perform(put("/api/v1/users/{id}", id)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type").exists())
+                .andExpect(jsonPath("$.title").exists())
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.detail").exists());
     }
 
     @Test

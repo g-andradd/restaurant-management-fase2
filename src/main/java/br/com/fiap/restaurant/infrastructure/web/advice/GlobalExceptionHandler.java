@@ -3,6 +3,7 @@ package br.com.fiap.restaurant.infrastructure.web.advice;
 import br.com.fiap.restaurant.application.exception.InvalidCredentialsException;
 import br.com.fiap.restaurant.domain.exception.DomainException;
 import br.com.fiap.restaurant.domain.exception.EmailAlreadyExistsException;
+import br.com.fiap.restaurant.domain.exception.InvalidUserTypeReferenceException;
 import br.com.fiap.restaurant.domain.exception.LoginAlreadyExistsException;
 import br.com.fiap.restaurant.domain.exception.UserNotFoundException;
 import br.com.fiap.restaurant.domain.exception.UserTypeInUseException;
@@ -27,6 +28,7 @@ public class GlobalExceptionHandler {
     private static final URI TYPE_CONFLICT = URI.create("urn:problem-type:conflict");
     private static final URI TYPE_BUSINESS_RULE_VIOLATION = URI.create("urn:problem-type:business-rule-violation");
     private static final URI TYPE_UNAUTHORIZED = URI.create("urn:problem-type:unauthorized");
+    private static final URI TYPE_INVALID_REFERENCE = URI.create("urn:problem-type:invalid-reference");
     private static final URI TYPE_INTERNAL_ERROR = URI.create("urn:problem-type:internal-error");
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -73,6 +75,22 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
         problemDetail.setTitle("Unauthorized");
         problemDetail.setType(TYPE_UNAUTHORIZED);
+        return problemDetail;
+    }
+
+    @ExceptionHandler(InvalidUserTypeReferenceException.class)
+    public ProblemDetail handleInvalidUserTypeReference(InvalidUserTypeReferenceException ex) {
+        // Deliberately its own handler, not the generic DomainException fallback
+        // below: a non-existent UserType referenced from a request body is a
+        // 422 (the request is well-formed but semantically unprocessable),
+        // distinct from UserTypeNotFoundException's 404 (the URL's own
+        // target is missing). Keeping this explicit means a future handler
+        // reordering/addition can't silently change this status without
+        // breaking a test - see the 404-vs-422 assertions in
+        // UserControllerTest and UserTypeIntegrationTest.
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        problemDetail.setTitle("Invalid Reference");
+        problemDetail.setType(TYPE_INVALID_REFERENCE);
         return problemDetail;
     }
 

@@ -33,12 +33,31 @@ with full CRUD, and a way to (re-)associate a type with an existing `User`.
   **`ListUsersUseCase` resolves the whole page's distinct type ids in one
   `findAllById` call** and maps in memory — never one `findById` per user.
 - Unknown `userTypeId` referenced from a `POST`/`PUT /api/v1/users` body →
-  `InvalidUserTypeReferenceException` → **422 Unprocessable Entity**
-  (falls through to `GlobalExceptionHandler`'s existing generic
-  `DomainException` handler, no new handler needed). Deliberately distinct
-  from `UserTypeNotFoundException` → **404**, which is reserved for
+  `InvalidUserTypeReferenceException` → **422 Unprocessable Entity**, via
+  its own explicit `@ExceptionHandler` in `GlobalExceptionHandler` (not
+  the generic `DomainException` fallback — see the rule below for why this
+  needed to be pinned down explicitly). Deliberately distinct from
+  `UserTypeNotFoundException` → **404**, which is reserved for
   `GET`/`PUT`/`DELETE /api/v1/user-types/{id}` where the missing resource
   *is* the URL's own target.
+
+### Rule: 404 vs. 422 for a non-existent UserType
+
+**A non-existent `UserType` is 404 when it is the resource addressed by the
+URL, and 422 when it is a reference inside a request body.** This is not
+incidental — it was initially only enforced by falling through to M01's
+generic `DomainException` → 422 catch-all, which meant the distinction was
+protected by nothing: a future handler addition or reordering (e.g. when
+M04 adds `Restaurant` domain exceptions) could have silently changed the
+status with no test failing. It's now backed by both an explicit handler
+(`GlobalExceptionHandler.handleInvalidUserTypeReference`) and tests that
+assert the contrast directly (`UserControllerTest.create/updateReturns422OnUnknownUserTypeId`,
+`UserTypeControllerTest.getByIdReturns404WhenNotFound`,
+`UserTypeIntegrationTest.publicSignupWithNonExistentUserTypeIdReturns422`).
+**Follow the same pattern for any future cross-aggregate reference**
+(e.g. M04's `Restaurant.ownerId`): a dedicated exception + explicit handler
++ a test asserting the specific status, not a reliance on the generic
+fallback.
 - Deleting an in-use `UserType` → `UserTypeInUseException` → 409 Conflict,
   checked explicitly in `DeleteUserTypeUseCase` (via the new
   `UserRepository.existsByUserTypeId`) — never a raw FK violation
@@ -79,6 +98,9 @@ claim fresh.
   `UserType`, updated `User`-side tests, and an integration test proving
   self-registration as "Dono de Restaurante" end-to-end, re-assignment of
   an existing user's type, and 409 on deleting an in-use type.
+- The 404-vs-422 rule above is asserted by tests, not just implemented —
+  both `isUnprocessableEntity()` (create/update with a bogus `userTypeId`)
+  and `isNotFound()` (`GET /user-types/{unknown-id}`) appear in the suite.
 - `V3` applies cleanly; `ddl-auto` stays `validate`.
 - ArchUnit layering + purity rules pass unchanged (no new packages needed).
 - The `fix/M02` cold-start test still passes, now supplying a seeded
