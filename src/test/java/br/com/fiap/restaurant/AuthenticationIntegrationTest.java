@@ -4,8 +4,11 @@ import br.com.fiap.restaurant.application.dto.CreateUserCommand;
 import br.com.fiap.restaurant.application.usecase.CreateUserUseCase;
 import br.com.fiap.restaurant.infrastructure.security.JwtProperties;
 import br.com.fiap.restaurant.infrastructure.security.JwtTokenProvider;
+import br.com.fiap.restaurant.infrastructure.web.dto.CreateUserRequest;
 import br.com.fiap.restaurant.infrastructure.web.dto.LoginRequest;
 import br.com.fiap.restaurant.infrastructure.web.dto.LoginResponse;
+import br.com.fiap.restaurant.infrastructure.web.dto.UpdateUserRequest;
+import br.com.fiap.restaurant.infrastructure.web.dto.UserResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,8 +24,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Map;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -58,6 +63,45 @@ class AuthenticationIntegrationTest {
                 .andExpect(jsonPath("$.detail").exists());
     }
 
+    /**
+     * Regression test for the P0 bootstrap deadlock: a brand-new deployment
+     * has no seeded user and SecurityConfig requires a Bearer token for
+     * everything except POST /api/v1/auth/login and POST /api/v1/users. If
+     * the latter weren't public, there would be no way to ever obtain a
+     * first token. This test proves the whole flow works through HTTP
+     * alone - it deliberately never calls createUserUseCase directly, since
+     * that would bypass the filter chain and miss exactly this class of bug.
+     */
+    @Test
+    void coldStartSelfRegistrationWorksThroughHttpAloneWithNoDirectSeeding() throws Exception {
+        var createRequest = new CreateUserRequest(
+                "Gabriela Reis", "gabriela@example.com", "gabriela.reis", "senha123", null);
+
+        var createResult = mockMvc.perform(post("/api/v1/users")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        var createdUser = objectMapper.readValue(
+                createResult.getResponse().getContentAsString(), UserResponse.class);
+
+        var loginRequest = new LoginRequest("gabriela.reis", "senha123");
+        var loginResult = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        var loginResponse = objectMapper.readValue(
+                loginResult.getResponse().getContentAsString(), LoginResponse.class);
+
+        mockMvc.perform(get("/api/v1/users/{id}", createdUser.id())
+                        .header("Authorization", "Bearer " + loginResponse.accessToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(createdUser.id().toString()));
+    }
+
     @Test
     void protectedEndpointReturns401WithoutToken() throws Exception {
         var created = createUserUseCase.execute(
@@ -86,6 +130,26 @@ class AuthenticationIntegrationTest {
 
         assertProblemDetailUnauthorized(mockMvc.perform(get("/api/v1/users/{id}", created.id())
                 .header("Authorization", "Bearer " + expiredToken)));
+    }
+
+    @Test
+    void updateWithoutTokenReturns401() throws Exception {
+        var created = createUserUseCase.execute(
+                new CreateUserCommand("Elisa Nunes", "elisa@example.com", "elisa.nunes", "senha123", null));
+
+        var updateRequest = new UpdateUserRequest("Elisa N.", "elisa@example.com", "elisa.nunes", null, null);
+
+        assertProblemDetailUnauthorized(mockMvc.perform(put("/api/v1/users/{id}", created.id())
+                .contentType("application/json")
+                .content(objectMapper.writeValueAsString(updateRequest))));
+    }
+
+    @Test
+    void deleteWithoutTokenReturns401() throws Exception {
+        var created = createUserUseCase.execute(
+                new CreateUserCommand("Fabio Rocha", "fabio@example.com", "fabio.rocha", "senha123", null));
+
+        assertProblemDetailUnauthorized(mockMvc.perform(delete("/api/v1/users/{id}", created.id())));
     }
 
     @Test

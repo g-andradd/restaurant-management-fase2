@@ -148,3 +148,33 @@
   direto ao Swagger UI sem precisar logar antes). Revisitar antes de
   qualquer exposição real do serviço — normalmente essas rotas também
   deveriam ficar atrás de autenticação ou de uma rede restrita.
+
+## 2026-07-10 — fix/M02: deadlock de bootstrap (P0) — auto-registro público
+
+- **Bug P0 encontrado por auditoria externa, não pelos testes**:
+  `SecurityConfig` tinha `.anyRequest().authenticated()`, mas o único jeito
+  de conseguir um token era logar como um usuário já existente — e não
+  havia nenhum usuário semeado nem nenhuma rota pública para criar um. Uma
+  instância recém-implantada ficava permanentemente inutilizável: todo
+  endpoint (incluindo `POST /api/v1/users`) devolvia 401, e não havia
+  nenhuma forma de sair desse estado sem inserir um usuário manualmente no
+  banco.
+- **Por que o build ficava verde mesmo assim**: `AuthenticationIntegrationTest`
+  semeava seu usuário chamando `createUserUseCase.execute(...)` diretamente
+  em Java, pulando a camada HTTP inteira — nenhum teste jamais passava pela
+  porta trancada (a chain de filtros do Spring Security) para tentar criar
+  o primeiro usuário via API. A cobertura de 92%+ e o `BUILD SUCCESS`
+  mediam código exercitado, não o fluxo de bootstrap real de uma instância
+  nova. Corrigido adicionando um teste "cold start"
+  (`coldStartSelfRegistrationWorksThroughHttpAloneWithNoDirectSeeding`) que
+  só usa `MockMvc`, nunca o use case diretamente.
+- **Decisão: `POST /api/v1/users` é auto-registro público**
+  (`permitAll()`), declarado ANTES de `anyRequest().authenticated()` na
+  chain — `GET`/`PUT`/`DELETE` em `/api/v1/users/**` continuam exigindo
+  token.
+- **Flag para o M03**: quando `UserType` existir, decidir se um usuário
+  que se auto-registra pode se declarar "Dono de Restaurante" diretamente
+  no payload de criação (risco de escalada de privilégio — qualquer um
+  vira dono de restaurante sem nenhuma verificação) ou se todo
+  auto-registro entra como "Cliente" por padrão, com a promoção a "Dono de
+  Restaurante" exigindo um fluxo separado/mais controlado.
