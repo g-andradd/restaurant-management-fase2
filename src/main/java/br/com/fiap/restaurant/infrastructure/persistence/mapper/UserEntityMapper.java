@@ -16,6 +16,7 @@ public final class UserEntityMapper {
                 user.getLogin(),
                 user.getSenhaHash(),
                 user.getEndereco(),
+                user.getUserTypeId(),
                 user.getDataCriacao(),
                 user.getDataUltimaAlteracao());
     }
@@ -28,6 +29,7 @@ public final class UserEntityMapper {
                 entity.getLogin(),
                 entity.getSenhaHash(),
                 entity.getEndereco(),
+                entity.getUserTypeId(),
                 entity.getDataCriacao(),
                 entity.getDataUltimaAlteracao());
     }

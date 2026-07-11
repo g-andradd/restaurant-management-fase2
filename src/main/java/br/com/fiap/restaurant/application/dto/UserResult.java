@@ -6,10 +6,10 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record UserResult(UUID id, String nome, String email, String login, String endereco,
-                          LocalDateTime dataCriacao, LocalDateTime dataUltimaAlteracao) {
+                          UserTypeResult userType, LocalDateTime dataCriacao, LocalDateTime dataUltimaAlteracao) {
 
-    public static UserResult from(User user) {
+    public static UserResult from(User user, UserTypeResult userType) {
         return new UserResult(user.getId(), user.getNome(), user.getEmail(), user.getLogin(),
-                user.getEndereco(), user.getDataCriacao(), user.getDataUltimaAlteracao());
+                user.getEndereco(), userType, user.getDataCriacao(), user.getDataUltimaAlteracao());
     }
 }

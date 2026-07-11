@@ -85,6 +85,11 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public boolean existsByUserTypeId(UUID userTypeId) {
+        return jpaRepository.existsByUserTypeId(userTypeId);
+    }
+
+    @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }

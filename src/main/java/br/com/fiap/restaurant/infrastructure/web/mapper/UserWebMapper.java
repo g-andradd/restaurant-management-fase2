@@ -18,17 +18,18 @@ public final class UserWebMapper {
 
     public static CreateUserCommand toCommand(CreateUserRequest request) {
         return new CreateUserCommand(request.nome(), request.email(), request.login(),
-                request.senha(), request.endereco());
+                request.senha(), request.endereco(), request.userTypeId());
     }
 
     public static UpdateUserCommand toCommand(UUID id, UpdateUserRequest request) {
         return new UpdateUserCommand(id, request.nome(), request.email(), request.login(),
-                request.senha(), request.endereco());
+                request.senha(), request.endereco(), request.userTypeId());
     }
 
     public static UserResponse toResponse(UserResult result) {
         return new UserResponse(result.id(), result.nome(), result.email(), result.login(),
-                result.endereco(), result.dataCriacao(), result.dataUltimaAlteracao());
+                result.endereco(), UserTypeWebMapper.toResponse(result.userType()),
+                result.dataCriacao(), result.dataUltimaAlteracao());
     }
 
     public static PageResponse<UserResponse> toPageResponse(PageResult<UserResult> pageResult) {
