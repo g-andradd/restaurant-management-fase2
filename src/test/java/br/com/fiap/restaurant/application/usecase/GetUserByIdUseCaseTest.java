@@ -32,7 +32,7 @@ class GetUserByIdUseCaseTest {
         UUID userTypeId = UUID.randomUUID();
         User user = User.create("Ana Silva", "ana@example.com", "ana.silva", "hashed-pw", null, userTypeId);
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
-        when(userTypeRepository.findById(userTypeId)).thenReturn(Optional.of(UserType.reconstitute(userTypeId, "Cliente")));
+        when(userTypeRepository.findById(userTypeId)).thenReturn(Optional.of(UserType.reconstitute(userTypeId, "Cliente", false)));
 
         var result = useCase.execute(user.getId());
 

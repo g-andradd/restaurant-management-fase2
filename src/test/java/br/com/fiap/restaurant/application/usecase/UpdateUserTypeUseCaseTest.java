@@ -27,15 +27,29 @@ class UpdateUserTypeUseCaseTest {
     @Test
     void updatesNome() {
         var useCase = new UpdateUserTypeUseCase(userTypeRepository);
-        UserType userType = UserType.create("Cliente");
+        UserType userType = UserType.create("Cliente", false);
 
         when(userTypeRepository.findById(userType.getId())).thenReturn(Optional.of(userType));
         when(userTypeRepository.existsByNomeAndIdNot("Dono de Restaurante", userType.getId())).thenReturn(false);
         when(userTypeRepository.save(any(UserType.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = useCase.execute(new UpdateUserTypeCommand(userType.getId(), "Dono de Restaurante"));
+        var result = useCase.execute(new UpdateUserTypeCommand(userType.getId(), "Dono de Restaurante", false));
 
         assertThat(result.nome()).isEqualTo("Dono de Restaurante");
+    }
+
+    @Test
+    void updatesPodeSerDono() {
+        var useCase = new UpdateUserTypeUseCase(userTypeRepository);
+        UserType userType = UserType.create("Cliente", false);
+
+        when(userTypeRepository.findById(userType.getId())).thenReturn(Optional.of(userType));
+        when(userTypeRepository.existsByNomeAndIdNot("Cliente", userType.getId())).thenReturn(false);
+        when(userTypeRepository.save(any(UserType.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = useCase.execute(new UpdateUserTypeCommand(userType.getId(), "Cliente", true));
+
+        assertThat(result.podeSerDono()).isTrue();
     }
 
     @Test
@@ -44,19 +58,19 @@ class UpdateUserTypeUseCaseTest {
         UUID id = UUID.randomUUID();
         when(userTypeRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.execute(new UpdateUserTypeCommand(id, "Cliente")))
+        assertThatThrownBy(() -> useCase.execute(new UpdateUserTypeCommand(id, "Cliente", false)))
                 .isInstanceOf(UserTypeNotFoundException.class);
     }
 
     @Test
     void rejectsNomeOwnedByAnotherType() {
         var useCase = new UpdateUserTypeUseCase(userTypeRepository);
-        UserType userType = UserType.create("Cliente");
+        UserType userType = UserType.create("Cliente", false);
 
         when(userTypeRepository.findById(userType.getId())).thenReturn(Optional.of(userType));
         when(userTypeRepository.existsByNomeAndIdNot("Dono de Restaurante", userType.getId())).thenReturn(true);
 
-        assertThatThrownBy(() -> useCase.execute(new UpdateUserTypeCommand(userType.getId(), "Dono de Restaurante")))
+        assertThatThrownBy(() -> useCase.execute(new UpdateUserTypeCommand(userType.getId(), "Dono de Restaurante", false)))
                 .isInstanceOf(UserTypeNameAlreadyExistsException.class);
     }
 }

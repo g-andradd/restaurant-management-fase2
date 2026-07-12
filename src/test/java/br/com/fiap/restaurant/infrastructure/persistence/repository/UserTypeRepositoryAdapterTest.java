@@ -37,7 +37,7 @@ class UserTypeRepositoryAdapterTest {
     @Test
     void savesAndFindsById() {
         var adapter = adapter();
-        UserType userType = UserType.create("Fiscal");
+        UserType userType = UserType.create("Fiscal", false);
 
         adapter.save(userType);
         Optional<UserType> found = adapter.findById(userType.getId());
@@ -49,7 +49,7 @@ class UserTypeRepositoryAdapterTest {
     @Test
     void existsByNome() {
         var adapter = adapter();
-        UserType userType = UserType.create("Fiscal");
+        UserType userType = UserType.create("Fiscal", false);
         adapter.save(userType);
 
         assertThat(adapter.existsByNome("Fiscal")).isTrue();
@@ -59,7 +59,7 @@ class UserTypeRepositoryAdapterTest {
     @Test
     void existsByNomeAndIdNotExcludesOwnRecord() {
         var adapter = adapter();
-        UserType userType = UserType.create("Fiscal");
+        UserType userType = UserType.create("Fiscal", false);
         adapter.save(userType);
 
         assertThat(adapter.existsByNomeAndIdNot("Fiscal", userType.getId())).isFalse();
@@ -69,7 +69,7 @@ class UserTypeRepositoryAdapterTest {
     @Test
     void updatesExistingUserType() {
         var adapter = adapter();
-        UserType userType = UserType.create("Fiscal");
+        UserType userType = UserType.create("Fiscal", false);
         adapter.save(userType);
 
         userType.renomear("Auditor");
@@ -82,7 +82,7 @@ class UserTypeRepositoryAdapterTest {
     @Test
     void deletesById() {
         var adapter = adapter();
-        UserType userType = UserType.create("Fiscal");
+        UserType userType = UserType.create("Fiscal", false);
         adapter.save(userType);
 
         adapter.deleteById(userType.getId());
@@ -93,8 +93,8 @@ class UserTypeRepositoryAdapterTest {
     @Test
     void findAllByIdResolvesMultipleTypesInOneCall() {
         var adapter = adapter();
-        UserType tipoA = UserType.create("Fiscal");
-        UserType tipoB = UserType.create("Auditor");
+        UserType tipoA = UserType.create("Fiscal", false);
+        UserType tipoB = UserType.create("Auditor", false);
         adapter.save(tipoA);
         adapter.save(tipoB);
 
@@ -113,9 +113,9 @@ class UserTypeRepositoryAdapterTest {
         // transaction, so @DataJpaTest's per-test rollback doesn't hide them.
         long baseline = adapter.count();
 
-        adapter.save(UserType.create("Tipo Um"));
-        adapter.save(UserType.create("Tipo Dois"));
-        adapter.save(UserType.create("Tipo Tres"));
+        adapter.save(UserType.create("Tipo Um", false));
+        adapter.save(UserType.create("Tipo Dois", false));
+        adapter.save(UserType.create("Tipo Tres", false));
 
         List<UserType> firstPage = adapter.findAll(0, 2);
 

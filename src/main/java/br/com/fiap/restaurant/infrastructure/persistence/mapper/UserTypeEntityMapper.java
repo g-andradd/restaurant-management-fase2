@@ -9,10 +9,10 @@ public final class UserTypeEntityMapper {
     }
 
     public static UserTypeJpaEntity toEntity(UserType userType) {
-        return new UserTypeJpaEntity(userType.getId(), userType.getNome());
+        return new UserTypeJpaEntity(userType.getId(), userType.getNome(), userType.podeSerDono());
     }
 
     public static UserType toDomain(UserTypeJpaEntity entity) {
-        return UserType.reconstitute(entity.getId(), entity.getNome());
+        return UserType.reconstitute(entity.getId(), entity.getNome(), entity.isCanOwnRestaurant());
     }
 }

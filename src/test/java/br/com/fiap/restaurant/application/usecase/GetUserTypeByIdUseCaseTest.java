@@ -24,12 +24,13 @@ class GetUserTypeByIdUseCaseTest {
     @Test
     void returnsResultWhenFound() {
         var useCase = new GetUserTypeByIdUseCase(userTypeRepository);
-        UserType userType = UserType.create("Cliente");
+        UserType userType = UserType.create("Cliente", false);
         when(userTypeRepository.findById(userType.getId())).thenReturn(Optional.of(userType));
 
         var result = useCase.execute(userType.getId());
 
         assertThat(result.nome()).isEqualTo("Cliente");
+        assertThat(result.podeSerDono()).isFalse();
     }
 
     @Test

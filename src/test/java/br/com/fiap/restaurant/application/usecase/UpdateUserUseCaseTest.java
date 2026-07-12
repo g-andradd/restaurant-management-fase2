@@ -50,7 +50,7 @@ class UpdateUserUseCaseTest {
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(userRepository.existsByEmailAndIdNot("ana.souza@example.com", user.getId())).thenReturn(false);
         when(userRepository.existsByLoginAndIdNot("ana.souza", user.getId())).thenReturn(false);
-        when(userTypeRepository.findById(USER_TYPE_ID)).thenReturn(Optional.of(UserType.reconstitute(USER_TYPE_ID, "Cliente")));
+        when(userTypeRepository.findById(USER_TYPE_ID)).thenReturn(Optional.of(UserType.reconstitute(USER_TYPE_ID, "Cliente", false)));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = useCase.execute(command);
@@ -70,7 +70,7 @@ class UpdateUserUseCaseTest {
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(userRepository.existsByEmailAndIdNot("ana@example.com", user.getId())).thenReturn(false);
         when(userRepository.existsByLoginAndIdNot("ana.silva", user.getId())).thenReturn(false);
-        when(userTypeRepository.findById(USER_TYPE_ID)).thenReturn(Optional.of(UserType.reconstitute(USER_TYPE_ID, "Cliente")));
+        when(userTypeRepository.findById(USER_TYPE_ID)).thenReturn(Optional.of(UserType.reconstitute(USER_TYPE_ID, "Cliente", false)));
         when(passwordEncoder.encode("new-plain-pw")).thenReturn("new-hash");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

@@ -71,9 +71,9 @@ class UserTypeControllerTest {
     @Test
     void createReturns201() throws Exception {
         UUID id = UUID.randomUUID();
-        when(createUserTypeUseCase.execute(any())).thenReturn(new UserTypeResult(id, "Cliente"));
+        when(createUserTypeUseCase.execute(any())).thenReturn(new UserTypeResult(id, "Cliente", false));
 
-        var request = new CreateUserTypeRequest("Cliente");
+        var request = new CreateUserTypeRequest("Cliente", false);
 
         mockMvc.perform(post("/api/v1/user-types")
                         .contentType("application/json")
@@ -85,7 +85,7 @@ class UserTypeControllerTest {
 
     @Test
     void createReturns400OnBlankNome() throws Exception {
-        var request = new CreateUserTypeRequest(" ");
+        var request = new CreateUserTypeRequest(" ", false);
 
         mockMvc.perform(post("/api/v1/user-types")
                         .contentType("application/json")
@@ -97,7 +97,7 @@ class UserTypeControllerTest {
     @Test
     void getByIdReturns200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(getUserTypeByIdUseCase.execute(id)).thenReturn(new UserTypeResult(id, "Dono de Restaurante"));
+        when(getUserTypeByIdUseCase.execute(id)).thenReturn(new UserTypeResult(id, "Dono de Restaurante", true));
 
         mockMvc.perform(get("/api/v1/user-types/{id}", id))
                 .andExpect(status().isOk())
@@ -125,7 +125,7 @@ class UserTypeControllerTest {
     @Test
     void listReturns200() throws Exception {
         UUID id = UUID.randomUUID();
-        var pageResult = PageResult.of(List.of(new UserTypeResult(id, "Cliente")), 0, 20, 1);
+        var pageResult = PageResult.of(List.of(new UserTypeResult(id, "Cliente", false)), 0, 20, 1);
         when(listUserTypesUseCase.execute(any())).thenReturn(pageResult);
 
         mockMvc.perform(get("/api/v1/user-types"))
@@ -136,9 +136,9 @@ class UserTypeControllerTest {
     @Test
     void updateReturns200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(updateUserTypeUseCase.execute(any())).thenReturn(new UserTypeResult(id, "Cliente"));
+        when(updateUserTypeUseCase.execute(any())).thenReturn(new UserTypeResult(id, "Cliente", false));
 
-        var request = new UpdateUserTypeRequest("Cliente");
+        var request = new UpdateUserTypeRequest("Cliente", false);
 
         mockMvc.perform(put("/api/v1/user-types/{id}", id)
                         .contentType("application/json")

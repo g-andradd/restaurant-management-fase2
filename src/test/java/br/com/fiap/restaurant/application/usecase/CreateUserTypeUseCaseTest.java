@@ -28,9 +28,21 @@ class CreateUserTypeUseCaseTest {
         when(userTypeRepository.existsByNome("Cliente")).thenReturn(false);
         when(userTypeRepository.save(any(UserType.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = useCase.execute(new CreateUserTypeCommand("Cliente"));
+        var result = useCase.execute(new CreateUserTypeCommand("Cliente", false));
 
         assertThat(result.nome()).isEqualTo("Cliente");
+        assertThat(result.podeSerDono()).isFalse();
+    }
+
+    @Test
+    void createsUserTypeThatCanOwnRestaurants() {
+        var useCase = new CreateUserTypeUseCase(userTypeRepository);
+        when(userTypeRepository.existsByNome("Dono de Restaurante")).thenReturn(false);
+        when(userTypeRepository.save(any(UserType.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = useCase.execute(new CreateUserTypeCommand("Dono de Restaurante", true));
+
+        assertThat(result.podeSerDono()).isTrue();
     }
 
     @Test
@@ -38,7 +50,7 @@ class CreateUserTypeUseCaseTest {
         var useCase = new CreateUserTypeUseCase(userTypeRepository);
         when(userTypeRepository.existsByNome("Cliente")).thenReturn(true);
 
-        assertThatThrownBy(() -> useCase.execute(new CreateUserTypeCommand("Cliente")))
+        assertThatThrownBy(() -> useCase.execute(new CreateUserTypeCommand("Cliente", false)))
                 .isInstanceOf(UserTypeNameAlreadyExistsException.class);
         verify(userTypeRepository, never()).save(any());
     }

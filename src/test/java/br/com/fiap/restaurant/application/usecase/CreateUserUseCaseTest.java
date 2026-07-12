@@ -48,7 +48,7 @@ class CreateUserUseCaseTest {
 
         when(userRepository.existsByEmail("ana@example.com")).thenReturn(false);
         when(userRepository.existsByLogin("ana.silva")).thenReturn(false);
-        when(userTypeRepository.findById(userTypeId)).thenReturn(Optional.of(UserType.reconstitute(userTypeId, "Cliente")));
+        when(userTypeRepository.findById(userTypeId)).thenReturn(Optional.of(UserType.reconstitute(userTypeId, "Cliente", false)));
         when(passwordEncoder.encode("plain-pw")).thenReturn("hashed-pw");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

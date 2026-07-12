@@ -48,7 +48,7 @@ class AuthenticateUserUseCaseTest {
 
         when(userRepository.findByLogin("ana.silva")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("plain-pw", "hashed-pw")).thenReturn(true);
-        when(userTypeRepository.findById(USER_TYPE_ID)).thenReturn(Optional.of(UserType.reconstitute(USER_TYPE_ID, "Cliente")));
+        when(userTypeRepository.findById(USER_TYPE_ID)).thenReturn(Optional.of(UserType.reconstitute(USER_TYPE_ID, "Cliente", false)));
         when(tokenProvider.generateToken(eq(user.getId().toString()), anyMap())).thenReturn("signed-token");
         when(tokenProvider.getExpirationSeconds()).thenReturn(3600L);
 
@@ -67,7 +67,7 @@ class AuthenticateUserUseCaseTest {
 
         when(userRepository.findByLogin("ana.silva")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("plain-pw", "hashed-pw")).thenReturn(true);
-        when(userTypeRepository.findById(USER_TYPE_ID)).thenReturn(Optional.of(UserType.reconstitute(USER_TYPE_ID, "Cliente")));
+        when(userTypeRepository.findById(USER_TYPE_ID)).thenReturn(Optional.of(UserType.reconstitute(USER_TYPE_ID, "Cliente", false)));
         when(tokenProvider.generateToken(any(), eq(Map.of("login", "ana.silva", "userType", "Cliente"))))
                 .thenReturn("signed-token");
 

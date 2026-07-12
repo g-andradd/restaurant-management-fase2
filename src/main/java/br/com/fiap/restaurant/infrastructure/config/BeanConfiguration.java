@@ -1,18 +1,25 @@
 package br.com.fiap.restaurant.infrastructure.config;
 
+import br.com.fiap.restaurant.application.port.AuthenticatedUserProvider;
 import br.com.fiap.restaurant.application.port.PasswordEncoder;
 import br.com.fiap.restaurant.application.port.TokenProvider;
 import br.com.fiap.restaurant.application.usecase.AuthenticateUserUseCase;
+import br.com.fiap.restaurant.application.usecase.CreateRestaurantUseCase;
 import br.com.fiap.restaurant.application.usecase.CreateUserTypeUseCase;
 import br.com.fiap.restaurant.application.usecase.CreateUserUseCase;
+import br.com.fiap.restaurant.application.usecase.DeleteRestaurantUseCase;
 import br.com.fiap.restaurant.application.usecase.DeleteUserTypeUseCase;
 import br.com.fiap.restaurant.application.usecase.DeleteUserUseCase;
+import br.com.fiap.restaurant.application.usecase.GetRestaurantByIdUseCase;
 import br.com.fiap.restaurant.application.usecase.GetUserByIdUseCase;
 import br.com.fiap.restaurant.application.usecase.GetUserTypeByIdUseCase;
+import br.com.fiap.restaurant.application.usecase.ListRestaurantsUseCase;
 import br.com.fiap.restaurant.application.usecase.ListUserTypesUseCase;
 import br.com.fiap.restaurant.application.usecase.ListUsersUseCase;
+import br.com.fiap.restaurant.application.usecase.UpdateRestaurantUseCase;
 import br.com.fiap.restaurant.application.usecase.UpdateUserTypeUseCase;
 import br.com.fiap.restaurant.application.usecase.UpdateUserUseCase;
+import br.com.fiap.restaurant.domain.repository.RestaurantRepository;
 import br.com.fiap.restaurant.domain.repository.UserRepository;
 import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
 import org.springframework.context.annotation.Bean;
@@ -50,8 +57,8 @@ public class BeanConfiguration {
     }
 
     @Bean
-    public DeleteUserUseCase deleteUserUseCase(UserRepository userRepository) {
-        return new DeleteUserUseCase(userRepository);
+    public DeleteUserUseCase deleteUserUseCase(UserRepository userRepository, RestaurantRepository restaurantRepository) {
+        return new DeleteUserUseCase(userRepository, restaurantRepository);
     }
 
     @Bean
@@ -86,5 +93,39 @@ public class BeanConfiguration {
     public DeleteUserTypeUseCase deleteUserTypeUseCase(UserTypeRepository userTypeRepository,
                                                         UserRepository userRepository) {
         return new DeleteUserTypeUseCase(userTypeRepository, userRepository);
+    }
+
+    @Bean
+    public CreateRestaurantUseCase createRestaurantUseCase(RestaurantRepository restaurantRepository,
+                                                             UserRepository userRepository,
+                                                             UserTypeRepository userTypeRepository,
+                                                             AuthenticatedUserProvider authenticatedUserProvider) {
+        return new CreateRestaurantUseCase(restaurantRepository, userRepository, userTypeRepository,
+                authenticatedUserProvider);
+    }
+
+    @Bean
+    public GetRestaurantByIdUseCase getRestaurantByIdUseCase(RestaurantRepository restaurantRepository,
+                                                               UserRepository userRepository) {
+        return new GetRestaurantByIdUseCase(restaurantRepository, userRepository);
+    }
+
+    @Bean
+    public ListRestaurantsUseCase listRestaurantsUseCase(RestaurantRepository restaurantRepository,
+                                                           UserRepository userRepository) {
+        return new ListRestaurantsUseCase(restaurantRepository, userRepository);
+    }
+
+    @Bean
+    public UpdateRestaurantUseCase updateRestaurantUseCase(RestaurantRepository restaurantRepository,
+                                                             UserRepository userRepository,
+                                                             AuthenticatedUserProvider authenticatedUserProvider) {
+        return new UpdateRestaurantUseCase(restaurantRepository, userRepository, authenticatedUserProvider);
+    }
+
+    @Bean
+    public DeleteRestaurantUseCase deleteRestaurantUseCase(RestaurantRepository restaurantRepository,
+                                                             AuthenticatedUserProvider authenticatedUserProvider) {
+        return new DeleteRestaurantUseCase(restaurantRepository, authenticatedUserProvider);
     }
 }

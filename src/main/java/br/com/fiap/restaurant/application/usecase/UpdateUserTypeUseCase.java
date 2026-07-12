@@ -24,6 +24,7 @@ public class UpdateUserTypeUseCase {
         }
 
         userType.renomear(command.nome());
+        userType.definirPodeSerDono(command.podeSerDono());
         UserType saved = userTypeRepository.save(userType);
         return UserTypeResult.from(saved);
     }

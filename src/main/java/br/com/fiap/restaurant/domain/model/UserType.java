@@ -7,24 +7,30 @@ public final class UserType {
 
     private final UUID id;
     private String nome;
+    private boolean podeSerDono;
 
-    private UserType(UUID id, String nome) {
+    private UserType(UUID id, String nome, boolean podeSerDono) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         validarNome(nome);
         this.nome = nome;
+        this.podeSerDono = podeSerDono;
     }
 
-    public static UserType create(String nome) {
-        return new UserType(UUID.randomUUID(), nome);
+    public static UserType create(String nome, boolean podeSerDono) {
+        return new UserType(UUID.randomUUID(), nome, podeSerDono);
     }
 
-    public static UserType reconstitute(UUID id, String nome) {
-        return new UserType(id, nome);
+    public static UserType reconstitute(UUID id, String nome, boolean podeSerDono) {
+        return new UserType(id, nome, podeSerDono);
     }
 
     public void renomear(String nome) {
         validarNome(nome);
         this.nome = nome;
+    }
+
+    public void definirPodeSerDono(boolean podeSerDono) {
+        this.podeSerDono = podeSerDono;
     }
 
     private static void validarNome(String nome) {
@@ -39,5 +45,9 @@ public final class UserType {
 
     public String getNome() {
         return nome;
+    }
+
+    public boolean podeSerDono() {
+        return podeSerDono;
     }
 }

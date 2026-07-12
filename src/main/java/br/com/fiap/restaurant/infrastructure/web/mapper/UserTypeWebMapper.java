@@ -17,15 +17,15 @@ public final class UserTypeWebMapper {
     }
 
     public static CreateUserTypeCommand toCommand(CreateUserTypeRequest request) {
-        return new CreateUserTypeCommand(request.nome());
+        return new CreateUserTypeCommand(request.nome(), request.podeSerDono());
     }
 
     public static UpdateUserTypeCommand toCommand(UUID id, UpdateUserTypeRequest request) {
-        return new UpdateUserTypeCommand(id, request.nome());
+        return new UpdateUserTypeCommand(id, request.nome(), request.podeSerDono());
     }
 
     public static UserTypeResponse toResponse(UserTypeResult result) {
-        return new UserTypeResponse(result.id(), result.nome());
+        return new UserTypeResponse(result.id(), result.nome(), result.podeSerDono());
     }
 
     public static PageResponse<UserTypeResponse> toPageResponse(PageResult<UserTypeResult> pageResult) {
