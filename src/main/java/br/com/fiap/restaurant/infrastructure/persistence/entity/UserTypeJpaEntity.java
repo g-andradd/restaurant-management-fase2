@@ -18,13 +18,17 @@ public class UserTypeJpaEntity {
     @Column(name = "nome", nullable = false)
     private String nome;
 
+    @Column(name = "can_own_restaurant", nullable = false)
+    private boolean canOwnRestaurant;
+
     protected UserTypeJpaEntity() {
         // required by JPA
     }
 
-    public UserTypeJpaEntity(UUID id, String nome) {
+    public UserTypeJpaEntity(UUID id, String nome, boolean canOwnRestaurant) {
         this.id = id;
         this.nome = nome;
+        this.canOwnRestaurant = canOwnRestaurant;
     }
 
     public UUID getId() {
@@ -33,5 +37,9 @@ public class UserTypeJpaEntity {
 
     public String getNome() {
         return nome;
+    }
+
+    public boolean isCanOwnRestaurant() {
+        return canOwnRestaurant;
     }
 }

@@ -76,7 +76,7 @@ class UserControllerTest {
     private static UserResult sampleResult(UUID id) {
         LocalDateTime now = LocalDateTime.now();
         return new UserResult(id, "Ana Silva", "ana@example.com", "ana.silva", null,
-                new UserTypeResult(USER_TYPE_ID, "Cliente"), now, now);
+                new UserTypeResult(USER_TYPE_ID, "Cliente", false), now, now);
     }
 
     @Test

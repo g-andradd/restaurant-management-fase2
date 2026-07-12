@@ -22,8 +22,8 @@ class ListUserTypesUseCaseTest {
     @Test
     void assemblesPageResultFromRepositoryData() {
         var useCase = new ListUserTypesUseCase(userTypeRepository);
-        UserType dono = UserType.create("Dono de Restaurante");
-        UserType cliente = UserType.create("Cliente");
+        UserType dono = UserType.create("Dono de Restaurante", true);
+        UserType cliente = UserType.create("Cliente", false);
 
         when(userTypeRepository.findAll(0, 20)).thenReturn(List.of(dono, cliente));
         when(userTypeRepository.count()).thenReturn(2L);

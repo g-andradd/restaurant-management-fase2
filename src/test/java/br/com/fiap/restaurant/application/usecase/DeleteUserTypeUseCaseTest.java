@@ -31,7 +31,7 @@ class DeleteUserTypeUseCaseTest {
     @Test
     void deletesWhenNotInUse() {
         var useCase = new DeleteUserTypeUseCase(userTypeRepository, userRepository);
-        UserType userType = UserType.create("Cliente");
+        UserType userType = UserType.create("Cliente", false);
 
         when(userTypeRepository.findById(userType.getId())).thenReturn(Optional.of(userType));
         when(userRepository.existsByUserTypeId(userType.getId())).thenReturn(false);
@@ -54,7 +54,7 @@ class DeleteUserTypeUseCaseTest {
     @Test
     void rejectsDeletionWhenInUse() {
         var useCase = new DeleteUserTypeUseCase(userTypeRepository, userRepository);
-        UserType userType = UserType.create("Cliente");
+        UserType userType = UserType.create("Cliente", false);
 
         when(userTypeRepository.findById(userType.getId())).thenReturn(Optional.of(userType));
         when(userRepository.existsByUserTypeId(userType.getId())).thenReturn(true);

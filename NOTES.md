@@ -276,3 +276,73 @@
   (ex.: `Restaurant.ownerId` apontando para um `User` inexistente) deveria
   seguir o mesmo molde — exceção dedicada + handler explícito + teste
   afirmando o status específico, em vez de confiar no fallback genérico.
+
+## 2026-07-11 — M04: Restaurant
+
+- **Autorização por capability flag, nunca por nome/UUID do tipo**:
+  `UserType` ganhou `podeSerDono` (coluna `can_own_restaurant`, backfill
+  `TRUE` só para o "Dono de Restaurante" semeado). `CreateRestaurantUseCase`
+  checa `ownerType.podeSerDono()`, nunca `nome.equals("Dono de
+  Restaurante")` nem comparação com o UUID fixo — um rename futuro do tipo,
+  ou um novo tipo com permissão de dono, continuam funcionando sem tocar
+  em código de autorização.
+- **Bug P0 encontrado pelo usuário antes de qualquer teste rodar (mesma
+  classe do fix/M02)**: o plano original de `CreateRestaurantUseCase`
+  resolvia o `owner` a partir de `command.ownerId()` e checava só se o
+  *tipo* dele podia ser dono — sem nunca comparar `ownerId` com o id do
+  chamador autenticado. Isso significava que qualquer usuário logado
+  (mesmo um Cliente) podia criar um restaurante em nome de outra pessoa,
+  bastando saber o id dela, desde que essa pessoa fosse de um tipo que
+  pode ser dono. Corrigido adicionando a checagem
+  `command.ownerId().equals(authenticatedUserProvider.getCurrentUserId())`
+  **antes** da checagem de capability, lançando `NotRestaurantOwnerException`
+  → 403 em caso de divergência. Não existe role de admin na Fase 2, então
+  não há nenhum caso legítimo de "criar em nome de outro usuário" — a
+  checagem não precisa de exceção para esse cenário.
+- **`AuthenticatedUserProvider` como porta nova**: use cases precisavam
+  saber "quem está chamando" sem depender de `SecurityContextHolder`
+  diretamente (isso violaria a regra de `application` não depender de
+  Spring). Porta em `application.port`, implementação
+  (`SpringSecurityAuthenticatedUserProvider`) em `infrastructure.security`,
+  lendo o principal do contexto de segurança e fazendo `UUID.fromString`.
+- **Update/delete releem `ownerId` do banco a cada chamada, nunca
+  confiam em cache**: `UpdateRestaurantUseCase`/`DeleteRestaurantUseCase`
+  buscam o restaurante, comparam `restaurant.getOwnerId()` com
+  `authenticatedUserProvider.getCurrentUserId()` (id imutável do token,
+  não a claim `"userType"`) e só então prosseguem. Mismatch →
+  `NotRestaurantOwnerException` → 403.
+- **AC6 tornado comportamental, não estrutural**: o plano original ia
+  provar a armadilha da claim `"userType"` (documentada no M03) só de
+  forma estrutural (ex.: "o código nunca lê essa claim"). Substituído por
+  `RestaurantIntegrationTest.staleTokenClaimDoesNotGrantOwnership`: cria um
+  Dono, loga (guarda o token), rebaixa esse mesmo usuário para Cliente via
+  `PUT /api/v1/users/{id}` (escolhido em vez de `PUT /user-types/{id}`
+  para não mexer nos dois tipos semeados compartilhados por outros
+  testes), e reusa o token ANTIGO — ainda com a claim `"Dono de
+  Restaurante"` — para tentar criar um restaurante. Resultado tem que ser
+  422 (regra de negócio: o tipo *atual* do usuário não pode ser dono), não
+  201. Prova de verdade que a autorização relê o banco a cada chamada, não
+  confia no token.
+- **`DeleteUserUseCase` ganhou checagem de restaurantes antes de apagar**:
+  um usuário que ainda é dono de pelo menos um restaurante não pode ser
+  apagado (`UserOwnsRestaurantsException` → 409), via
+  `RestaurantRepository.existsByOwnerId` — evita uma violação de FK
+  aparecendo como 500 cru.
+- **Limitação aceita e documentada, não corrigida**: `HorarioFuncionamento`
+  exige `abertura` estritamente antes de `fechamento` no mesmo relógio, ou
+  seja, não dá para representar um horário que atravessa a meia-noite
+  (ex.: 18:00–02:00). Modelar isso direito (rollover de dia, consultas de
+  "está aberto agora" cruzando meia-noite) é complexidade real sem
+  requisito de produto puxando por ela na Fase 2. Ver
+  `specs/modules/04-restaurant.md`.
+- **`ArchitecturePurityTest.mustNotUsePreAuthorizeAnnotations`**: nenhum
+  método em todo o projeto pode usar `@PreAuthorize` — a regra de
+  ownership é código de use case, testável e explícito, não uma anotação
+  de framework que esconderia a regra dos testes unitários. Mesma
+  motivação do "fora de escopo" já registrado no M03 para autorização
+  baseada em role.
+- **`GlobalExceptionHandler` ganhou handler para
+  `HttpMessageNotReadableException` → 400**: um literal de enum
+  `tipoCozinha` desconhecido no corpo da requisição falha durante a
+  desserialização do Jackson, antes mesmo do Bean Validation rodar — sem
+  esse handler, cairia no fallback genérico de 500.

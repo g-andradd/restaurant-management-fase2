@@ -19,7 +19,7 @@ public class CreateUserTypeUseCase {
             throw new UserTypeNameAlreadyExistsException(command.nome());
         }
 
-        UserType userType = UserType.create(command.nome());
+        UserType userType = UserType.create(command.nome(), command.podeSerDono());
         UserType saved = userTypeRepository.save(userType);
         return UserTypeResult.from(saved);
     }

@@ -39,8 +39,8 @@ class ListUsersUseCaseTest {
         when(userRepository.findAll(0, 20)).thenReturn(List.of(user1, user2));
         when(userRepository.count()).thenReturn(2L);
         when(userTypeRepository.findAllById(any())).thenReturn(List.of(
-                UserType.reconstitute(donoId, "Dono de Restaurante"),
-                UserType.reconstitute(clienteId, "Cliente")));
+                UserType.reconstitute(donoId, "Dono de Restaurante", true),
+                UserType.reconstitute(clienteId, "Cliente", false)));
 
         var result = useCase.execute(new PageQuery(0, 20));
 
