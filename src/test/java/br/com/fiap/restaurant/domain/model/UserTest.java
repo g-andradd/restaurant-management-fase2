@@ -1,5 +1,6 @@
 package br.com.fiap.restaurant.domain.model;
 
+import br.com.fiap.restaurant.domain.exception.DomainValidationException;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -37,25 +38,25 @@ class UserTest {
     @Test
     void createRejectsBlankNome() {
         assertThatThrownBy(() -> User.create(" ", "ana@example.com", "ana.silva", "hashed-pw", null, USER_TYPE_ID))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test
     void createRejectsEmailWithoutAtSign() {
         assertThatThrownBy(() -> User.create("Ana Silva", "not-an-email", "ana.silva", "hashed-pw", null, USER_TYPE_ID))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test
     void createRejectsBlankLogin() {
         assertThatThrownBy(() -> User.create("Ana Silva", "ana@example.com", " ", "hashed-pw", null, USER_TYPE_ID))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test
     void createRejectsBlankSenhaHash() {
         assertThatThrownBy(() -> User.create("Ana Silva", "ana@example.com", "ana.silva", " ", null, USER_TYPE_ID))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test
@@ -111,6 +112,6 @@ class UserTest {
     void alterarSenhaRejectsBlankHash() {
         User user = User.create("Ana Silva", "ana@example.com", "ana.silva", "old-hash", null, USER_TYPE_ID);
 
-        assertThatThrownBy(() -> user.alterarSenha(" ")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> user.alterarSenha(" ")).isInstanceOf(DomainValidationException.class);
     }
 }

@@ -167,6 +167,33 @@ for f in "$PKG"/application/usecase/List*.java; do
 done
 
 # -----------------------------------------------------------------------------
+section "9. EXCEPTIONS WITH NO HANDLER AT ALL (section 7's blind spot)"
+# Section 7 only compares statuses the handler EMITS against statuses tests
+# ASSERT - it can't see a status that SHOULD be emitted but was never wired up
+# at all (this is exactly how a plain IllegalArgumentException with no
+# handler shipped in M04: HorarioFuncionamento's invariant 500'd instead of
+# 400ing, and nothing here or in section 7 would have caught it before this
+# section existed). WARN, not FAIL: some exceptions are legitimately
+# internal-only (e.g. IllegalStateException for a should-be-unreachable
+# state) and are meant to fall through to the generic 500.
+# -----------------------------------------------------------------------------
+# Matches both `throw new X(...)` and the `.orElseThrow(() -> new X(...))`
+# idiom used throughout this codebase - a literal "throw" keyword isn't
+# required for an exception to actually be thrown by production code.
+THROWN=$(grep -rhoE "new [A-Za-z]+Exception\(" "$PKG/domain/" "$PKG/application/" 2>/dev/null \
+  | sed -E 's/^new (.*)\($/\1/' | sort -u)
+for ex in $THROWN; do
+  case "$ex" in
+    DomainException|DomainValidationException) continue ;;
+  esac
+  if grep -q "$ex" "$HANDLER" 2>/dev/null; then
+    pass "$ex is referenced by GlobalExceptionHandler"
+  else
+    warn "$ex is thrown in domain/application but GlobalExceptionHandler never mentions it - falls through to the generic fallback"
+  fi
+done
+
+# -----------------------------------------------------------------------------
 printf '\n============================================\n'
 if [ "$FAILURES" -eq 0 ]; then
   printf '\033[32mAUDIT PASSED\033[0m - 0 failures\n'

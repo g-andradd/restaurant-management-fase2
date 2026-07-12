@@ -1,5 +1,7 @@
 package br.com.fiap.restaurant.domain.model;
 
+import br.com.fiap.restaurant.domain.exception.DomainValidationException;
+
 import java.util.Objects;
 import java.util.UUID;
 
@@ -35,7 +37,7 @@ public final class UserType {
 
     private static void validarNome(String nome) {
         if (nome == null || nome.isBlank()) {
-            throw new IllegalArgumentException("nome must not be blank");
+            throw new DomainValidationException("nome must not be blank");
         }
     }
 

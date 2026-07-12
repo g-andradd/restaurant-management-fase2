@@ -346,3 +346,148 @@
   `tipoCozinha` desconhecido no corpo da requisição falha durante a
   desserialização do Jackson, antes mesmo do Bean Validation rodar — sem
   esse handler, cairia no fallback genérico de 500.
+
+## 2026-07-12 — M05: MenuItem (Item de Cardápio) — último módulo de feature
+
+- **Achado durante o planejamento, corrigido aqui**: `IllegalArgumentException`
+  não tinha handler nenhum em `GlobalExceptionHandler`, caindo no fallback
+  genérico de 500. Isso já afetava o M04 em produção: o invariante
+  `abertura`/`fechamento` de `HorarioFuncionamento` lança essa exceção, e
+  como não dá pra expressar "abertura antes de fechamento" com uma
+  anotação de Bean Validation de campo único, `POST`/`PUT /restaurants`
+  com `abertura >= fechamento` devolvia 500 em vez de 400 — sem que nenhum
+  teste (nem o `audit.sh` da época) detectasse isso, porque a suíte nunca
+  chamava o use case de verdade com esses valores. Corrigido com regressão
+  em `RestaurantIntegrationTest.aberturaNotBeforeFechamentoReturns400NotServerError`
+  (passa pelo use case real, não um mock) e em
+  `RestaurantControllerTest.createReturns400WhenAberturaIsNotBeforeFechamento`.
+- **Decisão: NÃO mapear `IllegalArgumentException` genericamente para
+  400**: essa exceção também é lançada por código de biblioteca e por bugs
+  de programação de verdade (ex.: `UUID.fromString` com valor malformado)
+  — um handler genérico diria "sua requisição está errada" quando na
+  verdade o SERVIDOR está quebrado, a mesma classe de mentira que já
+  rejeitamos para 404 em POST. Em vez disso: nova
+  `domain.exception.DomainValidationException extends DomainException`,
+  usada por TODOS os validadores de invariante de domínio (`User`,
+  `UserType`, `Restaurant`, `HorarioFuncionamento`, `MenuItem`) no lugar de
+  `IllegalArgumentException`. `GlobalExceptionHandler` ganhou
+  `@ExceptionHandler(DomainValidationException.class)` → 400.
+  `IllegalArgumentException` pura continua caindo no fallback de 500 — e
+  isso agora está correto: significa bug real, não entrada inválida do
+  usuário.
+- **`scripts/audit.sh` ganhou a seção 9**: a seção 7 só compara os status
+  que o handler EMITE contra os status que os testes AFIRMAM — ela não
+  enxerga um status que DEVERIA ser emitido mas nunca foi ligado a lugar
+  nenhum, que foi exatamente como o buraco do `IllegalArgumentException`
+  passou despercebido no M04. Seção nova varre todo `new
+  XxxException(` em `domain/`/`application/` (tanto `throw new X(...)`
+  quanto o idioma `.orElseThrow(() -> new X(...))`, usado o tempo todo
+  neste projeto) e avisa (WARN, não FAIL) se `GlobalExceptionHandler`
+  nunca menciona aquele tipo. `IllegalStateException` (ver item seguinte)
+  aparece como WARN de propósito — isso está certo, ela deve mesmo cair no
+  500 genérico.
+- **Nit do M04 corrigido**: `CreateRestaurantUseCase` lançava
+  `UserTypeNotFoundException` (404) quando o `UserType` do dono não era
+  encontrado — um ramo morto na prática (`users.user_type_id` é `NOT
+  NULL` com FK para `user_types`), mas que violaria a regra "404 só para o
+  alvo da própria URL" se algum dia disparasse de verdade. Trocado por
+  `IllegalStateException` ("corrupção de dado, deveria ser inalcançável").
+  Revisão de todos os use cases confirmou que nenhum outro `POST`/`PUT`
+  lança um `*NotFoundException` para uma referência do corpo da
+  requisição.
+- **A armadilha de rota aninhada (P0 deste módulo)**: toda operação por id
+  (`GET`/`PUT`/`DELETE /restaurants/{restaurantId}/menu-items/{id}`) tem
+  que verificar não só se o item existe, mas se ele pertence ao
+  `restaurantId` da URL — senão, qualquer um lê/edita/apaga o item de
+  OUTRO restaurante só passando o próprio `restaurantId` no path. Ordem
+  de checagem fixada e testada explicitamente: (1) o restaurante existe?
+  404 se não; (2) o item existe E pertence a este restaurante? UMA única
+  `MenuItemNotFoundException` (404) se não — checado ANTES da
+  verificação de dono, incondicionalmente, para que um item de outro
+  restaurante sempre devolva 404, nunca 403 (um 403 confirmaria que o
+  item existe em algum lugar). Testado nos três verbos, em unit tests e
+  end-to-end (`MenuItemIntegrationTest.crossRestaurantItemAccessReturns404NotForbiddenOnGetPutAndDelete`),
+  com dois restaurantes reais de dois donos diferentes.
+- **Cascade delete, quebrando de propósito o padrão 409-em-uso do
+  M03/M04**: `UserType` e `User` têm existência independente, então
+  bloquear a exclusão deles é certo; `MenuItem` é um filho composto sem
+  vida própria, então forçar o dono a apagar 30 itens antes de apagar o
+  restaurante seria uma API ruim. Implementado explicitamente dentro de
+  `DeleteRestaurantUseCase` (chama
+  `MenuItemRepository.deleteByRestaurantId(id)` antes de
+  `restaurantRepository.deleteById(id)`) — deliberadamente SEM `ON DELETE
+  CASCADE` no banco, que seria comportamento invisível que o domínio não
+  expressa. `DeleteUserUseCase` continua bloqueando a exclusão de usuário
+  dono de restaurante (409), sem nenhuma mudança.
+- **Novo port `TransactionRunner` para a cascade ser atômica sem vazar
+  `@Transactional` para `application`**: classes de use case não podem
+  carregar anotação nenhuma do Spring, incluindo `@Transactional`, então
+  `DeleteRestaurantUseCase` não tinha como garantir que as duas escritas
+  (apagar os itens em lote, depois apagar o restaurante) acontecessem
+  como uma unidade atômica. Resolvido com `application.port.TransactionRunner`
+  (`void run(Runnable)`, zero import do Spring — verificado pelo
+  ArchUnit), implementado por
+  `infrastructure.config.SpringTransactionRunner` (`@Component`, usa um
+  `TransactionTemplate` construído a partir do `PlatformTransactionManager`
+  autoconfigurado — o Spring Boot autoconfigura o gerenciador de
+  transação, mas não um bean `TransactionTemplate` pronto).
+  `DeleteRestaurantUseCase` envolve as duas escritas em
+  `transactionRunner.run(...)`, na ordem que a FK exige (itens primeiro).
+- **`preco` é `BigDecimal`, comparado com `compareTo`, nunca `<=`/`==`**:
+  erro clássico de ponto flutuante evitado desde o desenho — `preco > 0`
+  é `preco.compareTo(BigDecimal.ZERO) > 0`. Coluna `NUMERIC(10,2)`, entidade
+  JPA com `@Column(precision = 10, scale = 2)` batendo exatamente (senão
+  `ddl-auto=validate` quebra a subida da aplicação).
+- **Sem 422 neste módulo**: o corpo de `MenuItem` não tem nenhuma
+  referência cross-aggregate (`restaurantId` vem só do path, nunca do
+  corpo — aceitá-lo também no corpo recriaria a mesma armadilha de duas
+  fontes de verdade que a correção do P0 evita). `preco <= 0` é uma
+  restrição de campo único no próprio corpo, logo 400, não 422. Decisão
+  registrada explicitamente em vez de inventar um caso de 422 que não
+  existe.
+- **`MenuItemResponse` embute `restaurantId` como UUID simples, não um
+  resumo aninhado do restaurante** (diferente do padrão `UserResponse.userType`/
+  `RestaurantResponse.owner`): aqui o restaurante pai já é o próprio
+  contexto da URL, reembutir o resumo dele seria redundante.
+
+## 2026-07-12 — fix(M05): prova real de rollback da cascade transacional
+
+- **Achado de auditoria pós-merge, procedente**: `DeleteRestaurantUseCaseTest`
+  só provava ORDEM (o `TransactionRunner` mockado, stubado para rodar o
+  `Runnable` inline) e que o runner era chamado — nunca provava
+  atomicidade de verdade. Uma implementação totalmente errada como
+  `public void run(Runnable a) { a.run(); }` (sem transação nenhuma)
+  passaria em todos os testes existentes sem mudar uma linha. O port era
+  uma indireção sem garantia comprovada por trás — o mesmo problema de
+  "regra vazia" que este projeto já corrigiu uma vez no ArchUnit
+  (`LayeredArchitectureTest`, M01) e detectou de novo no `scripts/audit.sh`
+  (seção 9, M05).
+- **Dois testes novos fecham a lacuna, contra um Postgres real**:
+  - `SpringTransactionRunnerTest` (`infrastructure/config`): executa uma
+    escrita real dentro de `transactionRunner.run(...)` e lança uma
+    exceção — afirma que a escrita foi DESFEITA (não só que a exceção
+    propagou). Um teste complementar afirma que uma execução normal, sem
+    exceção, realmente persiste (`commitsTheWriteWhenTheActionCompletesNormally`)
+    — sem ele, um runner que sempre desfaz tudo (mesmo em caso de
+    sucesso) também "passaria" no primeiro teste.
+  - `DeleteRestaurantCascadeRollbackTest` (raiz do pacote de testes,
+    `@SpringBootTest`, deliberadamente NÃO `@DataJpaTest` — essa anotação
+    embrulha cada teste na própria transação que sempre é desfeita no
+    final, o que esconderia exatamente a falha que este teste existe para
+    pegar): constrói `DeleteRestaurantUseCase` manualmente com o
+    `TransactionRunner` real e o `MenuItemRepository` real, mas um stub de
+    `RestaurantRepository` cujo `deleteById` lança exceção — simulando uma
+    falha no meio da cascade. Afirma que os itens de menu (apagados pela
+    primeira escrita) continuam no banco depois da falha na segunda.
+- **Verificação exigida e feita**: `SpringTransactionRunner.run` foi
+  temporariamente trocado por `action.run()` (sem transação nenhuma); os
+  dois testes novos falharam como esperado (`SpringTransactionRunnerTest`
+  porque a escrita não foi desfeita; `DeleteRestaurantCascadeRollbackTest`
+  porque o delete em lote exige uma transação ativa e lançou erro
+  imediatamente). Implementação restaurada logo em seguida — `git diff`
+  no arquivo não mostrou nenhuma mudança residual.
+- **Os testes mockados antigos (`DeleteRestaurantUseCaseTest`) foram
+  mantidos**: ainda são úteis para provar ordem (itens antes do
+  restaurante) de forma rápida, sem Testcontainers — só não bastam
+  sozinhos para provar atomicidade, que é o que os dois testes novos
+  entregam.

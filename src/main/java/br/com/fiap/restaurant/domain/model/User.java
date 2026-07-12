@@ -1,5 +1,7 @@
 package br.com.fiap.restaurant.domain.model;
 
+import br.com.fiap.restaurant.domain.exception.DomainValidationException;
+
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
@@ -65,25 +67,25 @@ public final class User {
 
     private static void validarNome(String nome) {
         if (nome == null || nome.isBlank()) {
-            throw new IllegalArgumentException("nome must not be blank");
+            throw new DomainValidationException("nome must not be blank");
         }
     }
 
     private static void validarEmail(String email) {
         if (email == null || email.isBlank() || !email.contains("@")) {
-            throw new IllegalArgumentException("email must be a non-blank address containing '@'");
+            throw new DomainValidationException("email must be a non-blank address containing '@'");
         }
     }
 
     private static void validarLogin(String login) {
         if (login == null || login.isBlank()) {
-            throw new IllegalArgumentException("login must not be blank");
+            throw new DomainValidationException("login must not be blank");
         }
     }
 
     private static void validarSenhaHash(String senhaHash) {
         if (senhaHash == null || senhaHash.isBlank()) {
-            throw new IllegalArgumentException("senhaHash must not be blank");
+            throw new DomainValidationException("senhaHash must not be blank");
         }
     }
 

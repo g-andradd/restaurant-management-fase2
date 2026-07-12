@@ -187,6 +187,29 @@ class RestaurantIntegrationTest {
     }
 
     @Test
+    void aberturaNotBeforeFechamentoReturns400NotServerError() throws Exception {
+        // Regression, fixed in M05: HorarioFuncionamento's abertura/fechamento
+        // invariant used to throw a plain IllegalArgumentException, which
+        // GlobalExceptionHandler had no handler for - it fell through to the
+        // generic 500 fallback even though the request itself was the
+        // problem. Now it's DomainValidationException -> 400. Exercised
+        // through the real use case (no mocks) so it actually proves the
+        // production wiring, not just the handler-to-exception mapping.
+        var owner = signUp("Rafaela", DONO_DE_RESTAURANTE_ID);
+        String token = login(owner.login());
+        var invalidRequest = new CreateRestaurantRequest("Cantina da Ana", "Rua A, 100", TipoCozinha.ITALIANA,
+                LocalTime.of(22, 0), LocalTime.of(8, 0), owner.id());
+
+        mockMvc.perform(post("/api/v1/restaurants")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
     void getRestaurantIsOpenToAnyAuthenticatedUserNotJustTheOwner() throws Exception {
         var owner = signUp("Otavio", DONO_DE_RESTAURANTE_ID);
         String ownerToken = login(owner.login());

@@ -5,7 +5,6 @@ import br.com.fiap.restaurant.application.exception.NotRestaurantOwnerException;
 import br.com.fiap.restaurant.application.port.AuthenticatedUserProvider;
 import br.com.fiap.restaurant.domain.exception.InvalidUserReferenceException;
 import br.com.fiap.restaurant.domain.exception.UserCannotOwnRestaurantException;
-import br.com.fiap.restaurant.domain.exception.UserTypeNotFoundException;
 import br.com.fiap.restaurant.domain.model.Restaurant;
 import br.com.fiap.restaurant.domain.model.TipoCozinha;
 import br.com.fiap.restaurant.domain.model.User;
@@ -119,6 +118,10 @@ class CreateRestaurantUseCaseTest {
 
     @Test
     void rejectsWhenOwnerUserTypeNoLongerExists() {
+        // Not UserTypeNotFoundException (404): users.user_type_id is NOT NULL
+        // with an FK to user_types, so this is unreachable in practice - data
+        // corruption, not a client-facing 404. IllegalStateException falls
+        // through to the generic 500 fallback, which is the honest answer.
         UUID ownerId = UUID.randomUUID();
         UUID userTypeId = UUID.randomUUID();
         User owner = User.create("Ana Silva", "ana@example.com", "ana.silva", "hash", null, userTypeId);
@@ -128,6 +131,6 @@ class CreateRestaurantUseCaseTest {
         when(userTypeRepository.findById(userTypeId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase().execute(command(ownerId)))
-                .isInstanceOf(UserTypeNotFoundException.class);
+                .isInstanceOf(IllegalStateException.class);
     }
 }
