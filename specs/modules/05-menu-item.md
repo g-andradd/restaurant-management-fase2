@@ -92,6 +92,38 @@ requires (items first). ArchUnit's application-purity rule enforces the
 port itself stays Spring-free; only the `infrastructure`-side
 implementation touches Spring's transaction machinery.
 
+**Atomicity is proven by a real rollback test, not merely by the port's
+existence.** A post-merge audit correctly flagged that the original test
+suite only proved the runner was *invoked*, in the right *order*, using a
+mock `TransactionRunner` stubbed to run the action inline
+(`DeleteRestaurantUseCaseTest`) — that would pass identically against a
+pass-through implementation (`(action) -> action.run()`, no transaction at
+all). Two tests now prove the actual guarantee against a real Postgres:
+
+- `SpringTransactionRunnerTest` (in `infrastructure/config`) — runs a real
+  write inside `transactionRunner.run(...)` and throws; asserts the write
+  was rolled back (not just that the exception propagated). A companion
+  test asserts a normal, non-throwing run actually commits, ruling out a
+  runner that always rolls back regardless of outcome.
+- `DeleteRestaurantCascadeRollbackTest` (root-level, `@SpringBootTest`, not
+  `@DataJpaTest` — that annotation wraps every test in its own
+  transaction that rolls back at the end regardless of outcome, which
+  would mask exactly the failure mode being tested) — constructs
+  `DeleteRestaurantUseCase` with the real `TransactionRunner` and real
+  `MenuItemRepository`, but a `RestaurantRepository` stub whose
+  `deleteById` throws mid-cascade. Asserts the earlier
+  `deleteByRestaurantId` write was rolled back too (the menu items are
+  still in the database), proving the two writes really are one atomic
+  unit and not just sequentially invoked.
+
+**Verified this pair actually depends on the real implementation**: with
+`SpringTransactionRunner.run` temporarily replaced by
+`action.run()` (no transaction), both new tests failed as expected —
+`SpringTransactionRunnerTest` because the write was no longer rolled back,
+`DeleteRestaurantCascadeRollbackTest` because the bulk delete query
+requires an active transaction and threw immediately. Reverted afterward;
+`git diff` on the file showed no residual change.
+
 ### `DomainValidationException` — 400 without a blanket `IllegalArgumentException` handler
 
 `preco <= 0` needs the same shape of fix M04 needed for
@@ -183,6 +215,11 @@ reference (`CreateUserUseCase`/`UpdateUserUseCase` already use
   - `getMenuItemIsOpenToAnyAuthenticatedUserNotJustTheOwner`.
   - `RestaurantIntegrationTest.aberturaNotBeforeFechamentoReturns400NotServerError`
     — the M04 regression, proven through the real use case, not a mock.
+
+  Plus, added post-merge to close the atomicity gap: `SpringTransactionRunnerTest`
+  and `DeleteRestaurantCascadeRollbackTest` (see the `TransactionRunner`
+  section above) — a real rollback against Postgres, not a mock-based
+  order check.
 - `bash scripts/audit.sh` exits 0, including new section 9 (every
   constructed exception type either has a handler or is a deliberate,
   reviewable WARN).

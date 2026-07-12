@@ -449,3 +449,45 @@
   resumo aninhado do restaurante** (diferente do padrão `UserResponse.userType`/
   `RestaurantResponse.owner`): aqui o restaurante pai já é o próprio
   contexto da URL, reembutir o resumo dele seria redundante.
+
+## 2026-07-12 — fix(M05): prova real de rollback da cascade transacional
+
+- **Achado de auditoria pós-merge, procedente**: `DeleteRestaurantUseCaseTest`
+  só provava ORDEM (o `TransactionRunner` mockado, stubado para rodar o
+  `Runnable` inline) e que o runner era chamado — nunca provava
+  atomicidade de verdade. Uma implementação totalmente errada como
+  `public void run(Runnable a) { a.run(); }` (sem transação nenhuma)
+  passaria em todos os testes existentes sem mudar uma linha. O port era
+  uma indireção sem garantia comprovada por trás — o mesmo problema de
+  "regra vazia" que este projeto já corrigiu uma vez no ArchUnit
+  (`LayeredArchitectureTest`, M01) e detectou de novo no `scripts/audit.sh`
+  (seção 9, M05).
+- **Dois testes novos fecham a lacuna, contra um Postgres real**:
+  - `SpringTransactionRunnerTest` (`infrastructure/config`): executa uma
+    escrita real dentro de `transactionRunner.run(...)` e lança uma
+    exceção — afirma que a escrita foi DESFEITA (não só que a exceção
+    propagou). Um teste complementar afirma que uma execução normal, sem
+    exceção, realmente persiste (`commitsTheWriteWhenTheActionCompletesNormally`)
+    — sem ele, um runner que sempre desfaz tudo (mesmo em caso de
+    sucesso) também "passaria" no primeiro teste.
+  - `DeleteRestaurantCascadeRollbackTest` (raiz do pacote de testes,
+    `@SpringBootTest`, deliberadamente NÃO `@DataJpaTest` — essa anotação
+    embrulha cada teste na própria transação que sempre é desfeita no
+    final, o que esconderia exatamente a falha que este teste existe para
+    pegar): constrói `DeleteRestaurantUseCase` manualmente com o
+    `TransactionRunner` real e o `MenuItemRepository` real, mas um stub de
+    `RestaurantRepository` cujo `deleteById` lança exceção — simulando uma
+    falha no meio da cascade. Afirma que os itens de menu (apagados pela
+    primeira escrita) continuam no banco depois da falha na segunda.
+- **Verificação exigida e feita**: `SpringTransactionRunner.run` foi
+  temporariamente trocado por `action.run()` (sem transação nenhuma); os
+  dois testes novos falharam como esperado (`SpringTransactionRunnerTest`
+  porque a escrita não foi desfeita; `DeleteRestaurantCascadeRollbackTest`
+  porque o delete em lote exige uma transação ativa e lançou erro
+  imediatamente). Implementação restaurada logo em seguida — `git diff`
+  no arquivo não mostrou nenhuma mudança residual.
+- **Os testes mockados antigos (`DeleteRestaurantUseCaseTest`) foram
+  mantidos**: ainda são úteis para provar ordem (itens antes do
+  restaurante) de forma rápida, sem Testcontainers — só não bastam
+  sozinhos para provar atomicidade, que é o que os dois testes novos
+  entregam.
