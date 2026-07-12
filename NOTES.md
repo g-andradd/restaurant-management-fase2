@@ -491,3 +491,80 @@
   restaurante) de forma rápida, sem Testcontainers — só não bastam
   sozinhos para provar atomicidade, que é o que os dois testes novos
   entregam.
+
+## 2026-07-12 — M06: Coleção Postman + validação Docker Compose
+
+- **P0 real encontrado e corrigido: `docker-compose.yml` deixava
+  `JWT_SECRET` sem valor padrão**. Era a ÚNICA variável do arquivo sem
+  `:-default` (todas as outras, ex. `DB_NAME: ${DB_NAME:-restaurant_db}`,
+  tinham). Validado rodando de verdade `docker compose down -v &&
+  docker compose up --build` sem nenhum `.env` presente: o próprio Compose
+  avisa "JWT_SECRET variable is not set. Defaulting to a blank string.",
+  o container recebe `JWT_SECRET=` (presente, porém vazio), e o fallback
+  do Spring em `application-dev.yml`
+  (`${JWT_SECRET:change-me-dev-only-not-for-prod-32c}`) só entra em ação
+  quando a propriedade está AUSENTE — uma env var presente-mas-vazia não
+  aciona esse fallback. Resultado: `Keys.hmacShaKeyFor("")` lança
+  `WeakKeyException` e a aplicação cai no boot. Diferente do achado do
+  M02 (aquele era sobre o fallback ser curto demais; este é sobre o
+  fallback nunca ser alcançado, especificamente no caminho do Compose — o
+  passo documentado `cp .env.example .env` contorna o problema sem querer,
+  já que o segredo daquele arquivo tem 33 caracteres, por isso passou
+  despercebido do M00 ao M05). Corrigido com
+  `JWT_SECRET: ${JWT_SECRET:-change-me-dev-only-not-for-prod-32c}` — mesmo
+  literal já usado em `application-dev.yml`, um único fallback canônico de
+  dev. Revalidado após a correção: boot limpo, as 6 migrations aplicam do
+  zero, e a coleção Postman completa roda verde contra o app
+  containerizado, duas vezes seguidas.
+- **`scripts/audit.sh` ganhou a seção 11**: FAIL se qualquer `${VAR}` em
+  `docker-compose.yml` não tiver um `:-default`. Barato, e teria pego o P0
+  acima desde o M00 se existisse antes.
+- **`scripts/audit.sh` ganhou a seção 10 (o P0 deste módulo)**: a coleção
+  é um artefato JSON que `./mvnw verify` nunca olha — se uma rota de
+  controller mudar, a coleção apodrece em silêncio até alguém rodar na
+  mão. Implementado em bash/grep/sed puro (sem `jq`, sem Python — nenhum
+  dos dois está garantido na máquina de quem for avaliar; confirmado que
+  nem esta máquina de desenvolvimento tem `jq` ou um `python3` funcional no
+  PATH). Extrai rotas dos 5 controllers (prefixo de classe + método/path
+  de cada `@GetMapping`/etc.) e do JSON da coleção (todo request é
+  escrito com URL raw começando literalmente em `"{{baseUrl}}"`, o que
+  distingue de corpos JSON que também têm campo `"raw"`), normaliza
+  `{variavel}`/`{{variavel}}` para o mesmo token, e FAIL se um lado tiver
+  uma rota que o outro não tem. Verificado que a seção realmente pega
+  drift (não só a própria ausência): renomeei temporariamente a rota
+  `GET /{id}` de `RestaurantController` para `GET /{id}/DRIFTED`,
+  confirmei que a seção 10 ficou vermelha nas duas direções, revertido em
+  seguida, `bash scripts/audit.sh` voltou a sair 0.
+- **Coleção com 48 requisições em 6 pastas, 69 asserções, tudo
+  encadeado por variável de ambiente**: nenhum id fixo além dos dois
+  UUIDs semeados de `UserType` (documentados no próprio arquivo de
+  environment). Ordem das pastas: `Auth → Users → UserTypes →
+  Restaurants → MenuItems → Regras de negócio e erros` — o signup mora
+  dentro de `Auth` (não de `Users`) porque é pré-requisito de autenticação,
+  o que preserva essa ordem sem precisar reordenar nada.
+- **Toda pasta demonstra CRUD completo** (override do plano original, que
+  só mostraria o DELETE de restaurante no fim da pasta MenuItems): `Users`
+  e `Restaurants` criam um segundo recurso descartável só para demonstrar
+  o DELETE (204), mantendo o recurso principal vivo para as pastas
+  seguintes que ainda precisam dele. A pasta `MenuItems` continua
+  encerrando com a exclusão do restaurante principal como prova de cascade
+  (a mesma limitação de "restaurante sumiu" vs. "item foi de fato
+  cascateado" sendo observacionalmente idênticas de fora, que o teste
+  Java `MenuItemIntegrationTest` já tem).
+- **`{{$timestamp}}` inline foi rejeitado, usado um script de
+  pré-requisição no nível da coleção em vez disso**: `{{$timestamp}}` é
+  uma variável DINÂMICA do Postman, reavaliada a cada requisição — um
+  signup capturaria um valor e o login logo depois geraria outro,
+  quebrando a cadeia. Corrigido com
+  `if (!pm.environment.get("runSuffix")) { pm.environment.set("runSuffix", Date.now().toString()); }`
+  no nível da coleção, e todo e-mail/login/nome que precisa ser único usa
+  `{{runSuffix}}`. Verificado rodando a coleção completa duas vezes
+  seguidas contra o MESMO banco, sem reset entre as rodadas (via `npx
+  newman`, contra o app containerizado): as duas vieram 48/48 requisições,
+  69/69 asserções, 0 falhas.
+- **Newman usado de forma transitória (`npx newman`), não adotado como
+  dependência**: sem `package.json`, sem etapa de CI. Projeto é
+  Maven puro; o público real do artefato (um professor importando a
+  coleção na interface do Postman) não precisa de toolchain Node, e
+  adicionar uma para uma ferramenta de validação pontual seria exatamente
+  o tipo de tooling prematuro que este projeto já evita em outros lugares.

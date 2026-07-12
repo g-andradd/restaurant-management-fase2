@@ -27,9 +27,13 @@ Detalhes em [`specs/technical/architecture.md`](specs/technical/architecture.md)
 ### Com Docker Compose
 
 ```bash
-cp .env.example .env
 docker compose up --build
 ```
+
+Sobe com valores padrão de desenvolvimento definidos no próprio
+`docker-compose.yml` — nenhum `.env` é necessário. Para usar um segredo JWT
+ou credenciais de banco próprios, `cp .env.example .env` e edite antes de
+subir (o Compose carrega `.env` automaticamente se ele existir).
 
 A aplicação sobe em `http://localhost:8080`, com Swagger UI em
 `http://localhost:8080/swagger-ui.html`.
@@ -51,6 +55,36 @@ docker compose up postgres -d
 ```
 
 Requer Docker em execução (os testes de integração usam Testcontainers).
+
+## Coleção Postman
+
+Em [`postman/`](postman/): `RestaurantManagement.postman_collection.json` +
+`RestaurantManagement.postman_environment.json`.
+
+1. Suba a aplicação (Docker Compose ou localmente).
+2. No Postman: **Import** os dois arquivos.
+3. Selecione o environment "Restaurant Management - Fase 2" (canto superior
+   direito).
+4. Abra a coleção → **Run** (Collection Runner) → Run Restaurant Management.
+
+Roda do início ao fim sem nenhum passo manual, contra um banco vazio: cada
+pasta encadeia o estado da anterior via variáveis de ambiente
+(`userId`, `token`, `restaurantId`, `menuItemId`, ...) capturadas nos scripts
+de teste de cada requisição. As únicas duas UUIDs fixas na coleção são os
+tipos de usuário semeados (`donoTypeId`/`clienteTypeId`, documentados no
+próprio arquivo de environment). Pode ser executada mais de uma vez contra o
+mesmo banco sem falhar — um script de pré-requisição no nível da coleção
+gera um sufixo único por execução, usado em todo e-mail/login que precisa
+ser único.
+
+Estrutura: uma pasta por agregado (`Auth`, `Users`, `UserTypes`,
+`Restaurants`, `MenuItems`) demonstrando CRUD completo, mais uma pasta final
+`Regras de negocio e erros` cobrindo os casos que diferenciam este projeto
+(401/403/404/409/422/400 — incluindo a armadilha de rota aninhada do
+`MenuItem`, que deve devolver 404 e nunca 403).
+
+`bash scripts/audit.sh` (seção 10) falha o build se um endpoint mudar de
+rota e a coleção não for atualizada junto.
 
 ## Especificações
 
