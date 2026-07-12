@@ -25,7 +25,7 @@ services:
       DB_NAME: ${DB_NAME:-restaurant_db}
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-change-me-dev-only-not-for-prod-32c}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
       SPRING_PROFILES_ACTIVE: dev
     ports:

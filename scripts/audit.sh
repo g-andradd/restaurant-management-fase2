@@ -194,6 +194,82 @@ for ex in $THROWN; do
 done
 
 # -----------------------------------------------------------------------------
+section "10. POSTMAN COLLECTION <-> CONTROLLER ROUTE DRIFT"
+# The collection is a JSON artifact `mvnw verify` never looks at. If an
+# endpoint path changes, the collection silently rots until someone runs it
+# by hand. Pure bash/grep/sed (no jq/python - neither is guaranteed to be on
+# a grader's machine, and this stays consistent with every other section).
+# -----------------------------------------------------------------------------
+COLLECTION="postman/RestaurantManagement.postman_collection.json"
+if [ ! -f "$COLLECTION" ]; then
+  fail "postman collection not found at $COLLECTION"
+else
+  CONTROLLER_ROUTES=$(
+    for f in "$PKG"/infrastructure/web/controller/*.java; do
+      [ -e "$f" ] || continue
+      prefix=$(grep -oE '@RequestMapping\("[^"]*"\)' "$f" | head -1 | sed -E 's/^@RequestMapping\("(.*)"\)$/\1/')
+      grep -oE '@(Get|Post|Put|Delete)Mapping(\("[^"]*"\))?' "$f" | while read -r ann; do
+        verb=$(echo "$ann" | sed -E 's/@(Get|Post|Put|Delete)Mapping.*/\1/' | tr '[:lower:]' '[:upper:]')
+        subpath=$(echo "$ann" | grep -oE '"[^"]*"' | tr -d '"')
+        norm=$(echo "${prefix}${subpath}" | sed -E 's/\{[a-zA-Z0-9_]+\}/{}/g')
+        echo "$verb $norm"
+      done
+    done
+  )
+
+  # Every request's URL is authored as "{{baseUrl}}/api/v1/..." (raw), which
+  # disambiguates it from body-JSON "raw" fields (payloads never start with
+  # {{baseUrl}}). "method" is assumed to precede "url" for each request, in
+  # the same order - true for how this file is authored/generated.
+  COLLECTION_ROUTES=$(
+    METHODS=$(grep -oE '"method": "[A-Z]+"' "$COLLECTION" | sed -E 's/"method": "([A-Z]+)"/\1/')
+    URLS=$(grep -oE '"raw": "\{\{baseUrl\}\}[^"]*"' "$COLLECTION" | sed -E 's/"raw": "\{\{baseUrl\}\}([^"]*)"/\1/')
+    paste -d' ' <(echo "$METHODS") <(echo "$URLS") | while read -r method url; do
+      path=$(echo "$url" | sed -E 's/\?.*$//')
+      norm=$(echo "$path" | sed -E 's/\{\{[a-zA-Z0-9_]+\}\}/{}/g')
+      echo "$method $norm"
+    done
+  )
+
+  MISSING_IN_COLLECTION=$(comm -23 <(echo "$CONTROLLER_ROUTES" | sort -u) <(echo "$COLLECTION_ROUTES" | sort -u))
+  EXTRA_IN_COLLECTION=$(comm -13 <(echo "$CONTROLLER_ROUTES" | sort -u) <(echo "$COLLECTION_ROUTES" | sort -u))
+
+  if [ -n "$MISSING_IN_COLLECTION" ]; then
+    fail "controller route(s) with no matching Postman request:"
+    echo "$MISSING_IN_COLLECTION" | sed 's/^/    /'
+  fi
+  if [ -n "$EXTRA_IN_COLLECTION" ]; then
+    fail "Postman request(s) referencing a path no controller serves:"
+    echo "$EXTRA_IN_COLLECTION" | sed 's/^/    /'
+  fi
+  if [ -z "$MISSING_IN_COLLECTION" ] && [ -z "$EXTRA_IN_COLLECTION" ]; then
+    pass "every controller route has a matching Postman request, and vice versa"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+section "11. DOCKER COMPOSE - EVERY \${VAR} MUST HAVE A DEFAULT"
+# A ${VAR} with no :-default silently becomes an empty string when unset -
+# and an empty-but-present env var is NOT the same as an absent one to
+# Spring's own ${VAR:default} placeholder resolution, which only falls back
+# on absence. This exact gap let JWT_SECRET reach the container as an empty
+# string with no .env file present, crashing boot with WeakKeyException
+# (see NOTES.md / specs/modules/06-postman-docker.md). Cheap to catch here.
+# -----------------------------------------------------------------------------
+COMPOSE_FILE="docker-compose.yml"
+if [ ! -f "$COMPOSE_FILE" ]; then
+  warn "no docker-compose.yml found - skipping section 11"
+else
+  NO_DEFAULT=$(grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*\}' "$COMPOSE_FILE" | sort -u)
+  if [ -n "$NO_DEFAULT" ]; then
+    fail "docker-compose.yml has \${VAR} with no :- default:"
+    echo "$NO_DEFAULT" | sed 's/^/    /'
+  else
+    pass "every \${VAR} in docker-compose.yml has a :- default"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
 printf '\n============================================\n'
 if [ "$FAILURES" -eq 0 ]; then
   printf '\033[32mAUDIT PASSED\033[0m - 0 failures\n'

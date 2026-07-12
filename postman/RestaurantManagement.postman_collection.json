@@ -1,0 +1,1128 @@
+{
+  "info": {
+    "name": "Restaurant Management - Fase 2",
+    "description": "Runs top-to-bottom in the Collection Runner against a freshly started app with an empty database. Every request asserts its expected status. State (userId, token, restaurantId, menuItemId, ...) is chained via environment variables set in each request's Tests script - nothing is hardcoded except the two seeded UserType UUIDs (donoTypeId/clienteTypeId), documented in the environment file. Safe to run more than once against the same database: a collection-level pre-request script generates a unique runSuffix once per run, used in every email/login/nome that must be unique.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get(\"runSuffix\")) {\n    pm.environment.set(\"runSuffix\", Date.now().toString());\n}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup - Dono de Restaurante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\nconst json = pm.response.json();\npm.test(\"captures userId and donoLogin\", () => {\n    pm.expect(json.id).to.be.a(\"string\");\n    pm.environment.set(\"userId\", json.id);\n    pm.environment.set(\"donoLogin\", json.login);\n});\npm.test(\"userType is Dono de Restaurante\", () => {\n    pm.expect(json.userType.id).to.eql(pm.environment.get(\"donoTypeId\"));\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Dono Principal\",\n  \"email\": \"dono.{{runSuffix}}@example.com\",\n  \"login\": \"dono.{{runSuffix}}\",\n  \"senha\": \"senha123\",\n  \"endereco\": \"Rua A, 100\",\n  \"userTypeId\": \"{{donoTypeId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\nconst json = pm.response.json();\npm.test(\"captures token\", () => {\n    pm.expect(json.accessToken).to.be.a(\"string\");\n    pm.environment.set(\"token\", json.accessToken);\n});\npm.test(\"tokenType is Bearer\", () => pm.expect(json.tokenType).to.eql(\"Bearer\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{donoLogin}}\",\n  \"senha\": \"senha123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "login"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\nconst json = pm.response.json();\npm.test(\"id matches\", () => pm.expect(json.id).to.eql(pm.environment.get(\"userId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{userId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.test(\"has content array\", () => pm.expect(pm.response.json().content).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"],
+              "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "20" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.test(\"nome updated\", () => pm.expect(pm.response.json().nome).to.eql(\"Dono Principal Editado\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Dono Principal Editado\",\n  \"email\": \"dono.{{runSuffix}}@example.com\",\n  \"login\": \"{{donoLogin}}\",\n  \"senha\": null,\n  \"endereco\": \"Rua A, 200\",\n  \"userTypeId\": \"{{donoTypeId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{userId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Create throwaway user (for delete demo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\npm.test(\"captures throwawayUserId\", () => {\n    pm.environment.set(\"throwawayUserId\", pm.response.json().id);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Usuario Descartavel\",\n  \"email\": \"throwaway.{{runSuffix}}@example.com\",\n  \"login\": \"throwaway.{{runSuffix}}\",\n  \"senha\": \"senha123\",\n  \"endereco\": null,\n  \"userTypeId\": \"{{clienteTypeId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete throwaway user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 204\", () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{throwawayUserId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{throwawayUserId}}"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "UserTypes",
+      "item": [
+        {
+          "name": "Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\npm.test(\"captures customUserTypeId\", () => {\n    pm.environment.set(\"customUserTypeId\", pm.response.json().id);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Motorista {{runSuffix}}\",\n  \"podeSerDono\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/user-types", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-types"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.test(\"public - no token needed\", () => pm.expect(pm.response.json().id).to.eql(pm.environment.get(\"customUserTypeId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/user-types/{{customUserTypeId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-types", "{{customUserTypeId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-types?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-types"],
+              "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "20" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Motorista Editado {{runSuffix}}\",\n  \"podeSerDono\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/user-types/{{customUserTypeId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-types", "{{customUserTypeId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 204\", () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/user-types/{{customUserTypeId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-types", "{{customUserTypeId}}"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Restaurants",
+      "item": [
+        {
+          "name": "Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\nconst json = pm.response.json();\npm.test(\"captures restaurantId\", () => {\n    pm.environment.set(\"restaurantId\", json.id);\n});\npm.test(\"owner is the dono\", () => pm.expect(json.owner.id).to.eql(pm.environment.get(\"userId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Cantina do Dono Principal\",\n  \"endereco\": \"Rua A, 100\",\n  \"tipoCozinha\": \"ITALIANA\",\n  \"horarioAbertura\": \"08:00:00\",\n  \"horarioFechamento\": \"22:00:00\",\n  \"ownerId\": \"{{userId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.test(\"id matches\", () => pm.expect(pm.response.json().id).to.eql(pm.environment.get(\"restaurantId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{restaurantId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/restaurants?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "restaurants"],
+              "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "20" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.test(\"nome updated\", () => pm.expect(pm.response.json().nome).to.eql(\"Cantina do Dono Principal Editada\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Cantina do Dono Principal Editada\",\n  \"endereco\": \"Rua A, 150\",\n  \"tipoCozinha\": \"JAPONESA\",\n  \"horarioAbertura\": \"09:00:00\",\n  \"horarioFechamento\": \"23:00:00\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{restaurantId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Create throwaway restaurant (for delete demo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\npm.test(\"captures throwawayRestaurantId\", () => {\n    pm.environment.set(\"throwawayRestaurantId\", pm.response.json().id);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Restaurante Descartavel\",\n  \"endereco\": \"Rua Z, 999\",\n  \"tipoCozinha\": \"OUTRA\",\n  \"horarioAbertura\": \"10:00:00\",\n  \"horarioFechamento\": \"18:00:00\",\n  \"ownerId\": \"{{userId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete throwaway restaurant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 204\", () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{throwawayRestaurantId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{throwawayRestaurantId}}"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "MenuItems",
+      "item": [
+        {
+          "name": "Create item 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\nconst json = pm.response.json();\npm.test(\"captures menuItemId\", () => {\n    pm.environment.set(\"menuItemId\", json.id);\n});\npm.test(\"restaurantId matches\", () => pm.expect(json.restaurantId).to.eql(pm.environment.get(\"restaurantId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Pizza Margherita\",\n  \"descricao\": \"Molho de tomate, mussarela, manjericao\",\n  \"preco\": 39.90,\n  \"disponivelSomenteNoLocal\": true,\n  \"fotoPath\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}/menu-items", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{restaurantId}}", "menu-items"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Create item 2 (throwaway)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\npm.test(\"captures menuItemId2\", () => {\n    pm.environment.set(\"menuItemId2\", pm.response.json().id);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Refrigerante\",\n  \"descricao\": \"Lata 350ml\",\n  \"preco\": 8.00,\n  \"disponivelSomenteNoLocal\": false,\n  \"fotoPath\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}/menu-items", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{restaurantId}}", "menu-items"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.test(\"id matches\", () => pm.expect(pm.response.json().id).to.eql(pm.environment.get(\"menuItemId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}/menu-items/{{menuItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{restaurantId}}", "menu-items", "{{menuItemId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 200\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}/menu-items?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "restaurants", "{{restaurantId}}", "menu-items"],
+              "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "20" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update item 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.test(\"preco updated\", () => pm.expect(pm.response.json().preco).to.eql(45.0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Pizza Margherita Grande\",\n  \"descricao\": \"Molho de tomate, mussarela, manjericao\",\n  \"preco\": 45.00,\n  \"disponivelSomenteNoLocal\": true,\n  \"fotoPath\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}/menu-items/{{menuItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{restaurantId}}", "menu-items", "{{menuItemId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete item 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 204\", () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}/menu-items/{{menuItemId2}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{restaurantId}}", "menu-items", "{{menuItemId2}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete restaurant (cascade demo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 204\", () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{restaurantId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify cascade - item 1 is gone with the restaurant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));\npm.test(\"is a RFC 7807 problem detail\", () => {\n    const json = pm.response.json();\n    pm.expect(json.status).to.eql(404);\n    pm.expect(json.type).to.exist;\n    pm.expect(json.title).to.exist;\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{restaurantId}}/menu-items/{{menuItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{restaurantId}}", "menu-items", "{{menuItemId}}"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Regras de negocio e erros",
+      "item": [
+        {
+          "name": "401 - sem token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 401\", () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{userId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "401 - token invalido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 401\", () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer garbage.token.value" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{userId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup - signup Cliente X",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\nconst json = pm.response.json();\npm.environment.set(\"err_clienteXId\", json.id);\npm.environment.set(\"err_clienteXLogin\", json.login);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Cliente X\",\n  \"email\": \"clientex.{{runSuffix}}@example.com\",\n  \"login\": \"clientex.{{runSuffix}}\",\n  \"senha\": \"senha123\",\n  \"endereco\": null,\n  \"userTypeId\": \"{{clienteTypeId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup - login Cliente X",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.environment.set(\"err_clienteXToken\", pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{err_clienteXLogin}}\",\n  \"senha\": \"senha123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "login"] }
+          },
+          "response": []
+        },
+        {
+          "name": "403 - Cliente cria restaurante para outro dono",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 403\", () => pm.response.to.have.status(403));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{err_clienteXToken}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Restaurante Invasor\",\n  \"endereco\": \"Rua Y, 1\",\n  \"tipoCozinha\": \"OUTRA\",\n  \"horarioAbertura\": \"08:00:00\",\n  \"horarioFechamento\": \"22:00:00\",\n  \"ownerId\": \"{{userId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup - signup Dono C",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\nconst json = pm.response.json();\npm.environment.set(\"err_donoCId\", json.id);\npm.environment.set(\"err_donoCLogin\", json.login);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Dono C\",\n  \"email\": \"donoc.{{runSuffix}}@example.com\",\n  \"login\": \"donoc.{{runSuffix}}\",\n  \"senha\": \"senha123\",\n  \"endereco\": null,\n  \"userTypeId\": \"{{donoTypeId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup - login Dono C",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.environment.set(\"err_donoCToken\", pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{err_donoCLogin}}\",\n  \"senha\": \"senha123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "login"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup - Dono C cria restaurante C",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\npm.environment.set(\"err_restaurantCId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{err_donoCToken}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Restaurante C\",\n  \"endereco\": \"Rua C, 1\",\n  \"tipoCozinha\": \"BRASILEIRA\",\n  \"horarioAbertura\": \"08:00:00\",\n  \"horarioFechamento\": \"22:00:00\",\n  \"ownerId\": \"{{err_donoCId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants"] }
+          },
+          "response": []
+        },
+        {
+          "name": "403 - PUT restaurante alheio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 403\", () => pm.response.to.have.status(403));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{err_clienteXToken}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Hackeado\",\n  \"endereco\": \"Rua C, 1\",\n  \"tipoCozinha\": \"BRASILEIRA\",\n  \"horarioAbertura\": \"08:00:00\",\n  \"horarioFechamento\": \"22:00:00\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{err_restaurantCId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{err_restaurantCId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "403 - DELETE restaurante alheio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 403\", () => pm.response.to.have.status(403));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{err_clienteXToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{err_restaurantCId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{err_restaurantCId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup - Dono C cria item no restaurante C",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\npm.environment.set(\"err_itemCId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{err_donoCToken}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Feijoada\",\n  \"descricao\": \"Prato do dia\",\n  \"preco\": 32.00,\n  \"disponivelSomenteNoLocal\": true,\n  \"fotoPath\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{err_restaurantCId}}/menu-items", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{err_restaurantCId}}", "menu-items"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup - signup Dono D",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\nconst json = pm.response.json();\npm.environment.set(\"err_donoDId\", json.id);\npm.environment.set(\"err_donoDLogin\", json.login);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Dono D\",\n  \"email\": \"donod.{{runSuffix}}@example.com\",\n  \"login\": \"donod.{{runSuffix}}\",\n  \"senha\": \"senha123\",\n  \"endereco\": null,\n  \"userTypeId\": \"{{donoTypeId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup - login Dono D",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));\npm.environment.set(\"err_donoDToken\", pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{err_donoDLogin}}\",\n  \"senha\": \"senha123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "login"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup - Dono D cria restaurante D",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));\npm.environment.set(\"err_restaurantDId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{err_donoDToken}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Restaurante D\",\n  \"endereco\": \"Rua D, 1\",\n  \"tipoCozinha\": \"MEXICANA\",\n  \"horarioAbertura\": \"08:00:00\",\n  \"horarioFechamento\": \"22:00:00\",\n  \"ownerId\": \"{{err_donoDId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants"] }
+          },
+          "response": []
+        },
+        {
+          "name": "404 - GET item de C via restaurante D (trap - nunca 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404, never 403\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{err_donoDToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{err_restaurantDId}}/menu-items/{{err_itemCId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{err_restaurantDId}}", "menu-items", "{{err_itemCId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "404 - PUT item de C via restaurante D (trap - nunca 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404, never 403\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{err_donoDToken}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Hackeado\",\n  \"descricao\": null,\n  \"preco\": 1.00,\n  \"disponivelSomenteNoLocal\": false,\n  \"fotoPath\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{err_restaurantDId}}/menu-items/{{err_itemCId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{err_restaurantDId}}", "menu-items", "{{err_itemCId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "404 - DELETE item de C via restaurante D (trap - nunca 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404, never 403\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{err_donoDToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{err_restaurantDId}}/menu-items/{{err_itemCId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{err_restaurantDId}}", "menu-items", "{{err_itemCId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "422 - tipo do dono nao pode ser dono",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 422\", () => pm.response.to.have.status(422));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{err_clienteXToken}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Restaurante do Cliente\",\n  \"endereco\": \"Rua X, 1\",\n  \"tipoCozinha\": \"OUTRA\",\n  \"horarioAbertura\": \"08:00:00\",\n  \"horarioFechamento\": \"22:00:00\",\n  \"ownerId\": \"{{err_clienteXId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants"] }
+          },
+          "response": []
+        },
+        {
+          "name": "409 - tipo em uso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 409\", () => pm.response.to.have.status(409));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/user-types/{{clienteTypeId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-types", "{{clienteTypeId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "409 - usuario dono de restaurante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 409\", () => pm.response.to.have.status(409));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{err_donoCId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{err_donoCId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "400 - preco invalido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 400\", () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{err_donoDToken}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Item Gratis\",\n  \"descricao\": null,\n  \"preco\": 0,\n  \"disponivelSomenteNoLocal\": false,\n  \"fotoPath\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/{{err_restaurantDId}}/menu-items", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants", "{{err_restaurantDId}}", "menu-items"] }
+          },
+          "response": []
+        },
+        {
+          "name": "400 - horario invalido (abertura >= fechamento)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test(\"status is 400\", () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{err_donoDToken}}" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Restaurante Impossivel\",\n  \"endereco\": \"Rua W, 1\",\n  \"tipoCozinha\": \"OUTRA\",\n  \"horarioAbertura\": \"22:00:00\",\n  \"horarioFechamento\": \"08:00:00\",\n  \"ownerId\": \"{{err_donoDId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants", "host": ["{{baseUrl}}"], "path": ["api", "v1", "restaurants"] }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": []
+}
