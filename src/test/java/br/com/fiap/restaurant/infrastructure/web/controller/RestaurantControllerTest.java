@@ -10,6 +10,7 @@ import br.com.fiap.restaurant.application.usecase.DeleteRestaurantUseCase;
 import br.com.fiap.restaurant.application.usecase.GetRestaurantByIdUseCase;
 import br.com.fiap.restaurant.application.usecase.ListRestaurantsUseCase;
 import br.com.fiap.restaurant.application.usecase.UpdateRestaurantUseCase;
+import br.com.fiap.restaurant.domain.exception.DomainValidationException;
 import br.com.fiap.restaurant.domain.exception.InvalidUserReferenceException;
 import br.com.fiap.restaurant.domain.exception.RestaurantNotFoundException;
 import br.com.fiap.restaurant.domain.exception.UserCannotOwnRestaurantException;
@@ -129,6 +130,24 @@ class RestaurantControllerTest {
         mockMvc.perform(post("/api/v1/restaurants")
                         .contentType("application/json")
                         .content(malformedJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+    }
+
+    @Test
+    void createReturns400WhenAberturaIsNotBeforeFechamento() throws Exception {
+        // Regression for the M04 gap fixed in M05: HorarioFuncionamento's
+        // invariant now throws DomainValidationException, which
+        // GlobalExceptionHandler maps to 400 (previously it fell through to
+        // the generic 500 fallback, since plain IllegalArgumentException had
+        // no handler). See RestaurantIntegrationTest for the end-to-end proof
+        // through the real use case, not a mock.
+        when(createRestaurantUseCase.execute(any()))
+                .thenThrow(new DomainValidationException("abertura must be before fechamento"));
+
+        mockMvc.perform(post("/api/v1/restaurants")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(createRequest())))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }

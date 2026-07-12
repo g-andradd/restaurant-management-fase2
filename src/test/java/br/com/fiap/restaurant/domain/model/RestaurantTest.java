@@ -1,5 +1,6 @@
 package br.com.fiap.restaurant.domain.model;
 
+import br.com.fiap.restaurant.domain.exception.DomainValidationException;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -31,13 +32,13 @@ class RestaurantTest {
     @Test
     void createRejectsBlankNome() {
         assertThatThrownBy(() -> Restaurant.create(" ", "Rua A, 100", TipoCozinha.ITALIANA, HORARIO, UUID.randomUUID()))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test
     void createRejectsBlankEndereco() {
         assertThatThrownBy(() -> Restaurant.create("Cantina da Ana", " ", TipoCozinha.ITALIANA, HORARIO, UUID.randomUUID()))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test
@@ -76,6 +77,6 @@ class RestaurantTest {
         Restaurant restaurant = Restaurant.create("Cantina da Ana", "Rua A, 100", TipoCozinha.ITALIANA, HORARIO, UUID.randomUUID());
 
         assertThatThrownBy(() -> restaurant.atualizarDados(" ", "Rua B, 200", TipoCozinha.JAPONESA, HORARIO))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainValidationException.class);
     }
 }

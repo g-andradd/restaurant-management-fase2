@@ -3,22 +3,29 @@ package br.com.fiap.restaurant.infrastructure.config;
 import br.com.fiap.restaurant.application.port.AuthenticatedUserProvider;
 import br.com.fiap.restaurant.application.port.PasswordEncoder;
 import br.com.fiap.restaurant.application.port.TokenProvider;
+import br.com.fiap.restaurant.application.port.TransactionRunner;
 import br.com.fiap.restaurant.application.usecase.AuthenticateUserUseCase;
+import br.com.fiap.restaurant.application.usecase.CreateMenuItemUseCase;
 import br.com.fiap.restaurant.application.usecase.CreateRestaurantUseCase;
 import br.com.fiap.restaurant.application.usecase.CreateUserTypeUseCase;
 import br.com.fiap.restaurant.application.usecase.CreateUserUseCase;
+import br.com.fiap.restaurant.application.usecase.DeleteMenuItemUseCase;
 import br.com.fiap.restaurant.application.usecase.DeleteRestaurantUseCase;
 import br.com.fiap.restaurant.application.usecase.DeleteUserTypeUseCase;
 import br.com.fiap.restaurant.application.usecase.DeleteUserUseCase;
+import br.com.fiap.restaurant.application.usecase.GetMenuItemByIdUseCase;
 import br.com.fiap.restaurant.application.usecase.GetRestaurantByIdUseCase;
 import br.com.fiap.restaurant.application.usecase.GetUserByIdUseCase;
 import br.com.fiap.restaurant.application.usecase.GetUserTypeByIdUseCase;
+import br.com.fiap.restaurant.application.usecase.ListMenuItemsUseCase;
 import br.com.fiap.restaurant.application.usecase.ListRestaurantsUseCase;
 import br.com.fiap.restaurant.application.usecase.ListUserTypesUseCase;
 import br.com.fiap.restaurant.application.usecase.ListUsersUseCase;
+import br.com.fiap.restaurant.application.usecase.UpdateMenuItemUseCase;
 import br.com.fiap.restaurant.application.usecase.UpdateRestaurantUseCase;
 import br.com.fiap.restaurant.application.usecase.UpdateUserTypeUseCase;
 import br.com.fiap.restaurant.application.usecase.UpdateUserUseCase;
+import br.com.fiap.restaurant.domain.repository.MenuItemRepository;
 import br.com.fiap.restaurant.domain.repository.RestaurantRepository;
 import br.com.fiap.restaurant.domain.repository.UserRepository;
 import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
@@ -125,7 +132,43 @@ public class BeanConfiguration {
 
     @Bean
     public DeleteRestaurantUseCase deleteRestaurantUseCase(RestaurantRepository restaurantRepository,
-                                                             AuthenticatedUserProvider authenticatedUserProvider) {
-        return new DeleteRestaurantUseCase(restaurantRepository, authenticatedUserProvider);
+                                                             MenuItemRepository menuItemRepository,
+                                                             AuthenticatedUserProvider authenticatedUserProvider,
+                                                             TransactionRunner transactionRunner) {
+        return new DeleteRestaurantUseCase(restaurantRepository, menuItemRepository, authenticatedUserProvider,
+                transactionRunner);
+    }
+
+    @Bean
+    public CreateMenuItemUseCase createMenuItemUseCase(MenuItemRepository menuItemRepository,
+                                                         RestaurantRepository restaurantRepository,
+                                                         AuthenticatedUserProvider authenticatedUserProvider) {
+        return new CreateMenuItemUseCase(menuItemRepository, restaurantRepository, authenticatedUserProvider);
+    }
+
+    @Bean
+    public GetMenuItemByIdUseCase getMenuItemByIdUseCase(MenuItemRepository menuItemRepository,
+                                                           RestaurantRepository restaurantRepository) {
+        return new GetMenuItemByIdUseCase(menuItemRepository, restaurantRepository);
+    }
+
+    @Bean
+    public ListMenuItemsUseCase listMenuItemsUseCase(MenuItemRepository menuItemRepository,
+                                                       RestaurantRepository restaurantRepository) {
+        return new ListMenuItemsUseCase(menuItemRepository, restaurantRepository);
+    }
+
+    @Bean
+    public UpdateMenuItemUseCase updateMenuItemUseCase(MenuItemRepository menuItemRepository,
+                                                         RestaurantRepository restaurantRepository,
+                                                         AuthenticatedUserProvider authenticatedUserProvider) {
+        return new UpdateMenuItemUseCase(menuItemRepository, restaurantRepository, authenticatedUserProvider);
+    }
+
+    @Bean
+    public DeleteMenuItemUseCase deleteMenuItemUseCase(MenuItemRepository menuItemRepository,
+                                                         RestaurantRepository restaurantRepository,
+                                                         AuthenticatedUserProvider authenticatedUserProvider) {
+        return new DeleteMenuItemUseCase(menuItemRepository, restaurantRepository, authenticatedUserProvider);
     }
 }

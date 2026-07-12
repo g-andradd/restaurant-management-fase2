@@ -3,10 +3,12 @@ package br.com.fiap.restaurant.infrastructure.web.advice;
 import br.com.fiap.restaurant.application.exception.InvalidCredentialsException;
 import br.com.fiap.restaurant.application.exception.NotRestaurantOwnerException;
 import br.com.fiap.restaurant.domain.exception.DomainException;
+import br.com.fiap.restaurant.domain.exception.DomainValidationException;
 import br.com.fiap.restaurant.domain.exception.EmailAlreadyExistsException;
 import br.com.fiap.restaurant.domain.exception.InvalidUserReferenceException;
 import br.com.fiap.restaurant.domain.exception.InvalidUserTypeReferenceException;
 import br.com.fiap.restaurant.domain.exception.LoginAlreadyExistsException;
+import br.com.fiap.restaurant.domain.exception.MenuItemNotFoundException;
 import br.com.fiap.restaurant.domain.exception.RestaurantNotFoundException;
 import br.com.fiap.restaurant.domain.exception.UserCannotOwnRestaurantException;
 import br.com.fiap.restaurant.domain.exception.UserNotFoundException;
@@ -64,7 +66,8 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
-    @ExceptionHandler({UserNotFoundException.class, UserTypeNotFoundException.class, RestaurantNotFoundException.class})
+    @ExceptionHandler({UserNotFoundException.class, UserTypeNotFoundException.class, RestaurantNotFoundException.class,
+            MenuItemNotFoundException.class})
     public ProblemDetail handleNotFound(DomainException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problemDetail.setTitle("Resource Not Found");
@@ -99,6 +102,21 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
         problemDetail.setTitle("Forbidden");
         problemDetail.setType(TYPE_FORBIDDEN);
+        return problemDetail;
+    }
+
+    @ExceptionHandler(DomainValidationException.class)
+    public ProblemDetail handleDomainValidation(DomainValidationException ex) {
+        // A domain invariant was violated (blank required field, preco <= 0,
+        // abertura not before fechamento, etc.) - the request itself is bad,
+        // so 400. Deliberately its own type/handler rather than a generic
+        // IllegalArgumentException handler: IllegalArgumentException is also
+        // thrown by library code and genuine bugs, and mapping THAT to 400
+        // globally would tell the client "your request is bad" for a server
+        // problem. Only DomainValidationException means "bad request" here.
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problemDetail.setTitle("Validation Error");
+        problemDetail.setType(TYPE_VALIDATION_ERROR);
         return problemDetail;
     }
 

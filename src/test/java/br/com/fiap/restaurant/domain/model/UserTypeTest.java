@@ -1,5 +1,6 @@
 package br.com.fiap.restaurant.domain.model;
 
+import br.com.fiap.restaurant.domain.exception.DomainValidationException;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -27,7 +28,7 @@ class UserTypeTest {
 
     @Test
     void createRejectsBlankNome() {
-        assertThatThrownBy(() -> UserType.create(" ", false)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> UserType.create(" ", false)).isInstanceOf(DomainValidationException.class);
     }
 
     @Test
@@ -54,7 +55,7 @@ class UserTypeTest {
     void renomearRejectsBlankNome() {
         UserType userType = UserType.create("Cliente", false);
 
-        assertThatThrownBy(() -> userType.renomear(" ")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> userType.renomear(" ")).isInstanceOf(DomainValidationException.class);
     }
 
     @Test

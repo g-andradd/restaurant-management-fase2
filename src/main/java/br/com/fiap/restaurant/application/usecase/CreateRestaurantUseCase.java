@@ -7,7 +7,6 @@ import br.com.fiap.restaurant.application.exception.NotRestaurantOwnerException;
 import br.com.fiap.restaurant.application.port.AuthenticatedUserProvider;
 import br.com.fiap.restaurant.domain.exception.InvalidUserReferenceException;
 import br.com.fiap.restaurant.domain.exception.UserCannotOwnRestaurantException;
-import br.com.fiap.restaurant.domain.exception.UserTypeNotFoundException;
 import br.com.fiap.restaurant.domain.model.HorarioFuncionamento;
 import br.com.fiap.restaurant.domain.model.Restaurant;
 import br.com.fiap.restaurant.domain.model.User;
@@ -48,8 +47,14 @@ public class CreateRestaurantUseCase {
                     "User " + callerId + " cannot create a restaurant on behalf of user " + command.ownerId());
         }
 
+        // Not a *NotFoundException/404: users.user_type_id is NOT NULL with an
+        // FK to user_types, so a User whose UserType can't be resolved means
+        // the data itself is corrupt - unreachable in practice. A 404 here
+        // would violate "404 only for the URL's own target"; 500 is the
+        // honest answer for a state that should be structurally impossible.
         UserType ownerType = userTypeRepository.findById(owner.getUserTypeId())
-                .orElseThrow(() -> new UserTypeNotFoundException(owner.getUserTypeId()));
+                .orElseThrow(() -> new IllegalStateException(
+                        "User " + owner.getId() + " references a non-existent UserType " + owner.getUserTypeId()));
         if (!ownerType.podeSerDono()) {
             throw new UserCannotOwnRestaurantException(command.ownerId());
         }

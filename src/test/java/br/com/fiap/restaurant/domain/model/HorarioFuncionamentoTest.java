@@ -1,5 +1,6 @@
 package br.com.fiap.restaurant.domain.model;
 
+import br.com.fiap.restaurant.domain.exception.DomainValidationException;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalTime;
@@ -20,7 +21,7 @@ class HorarioFuncionamentoTest {
     @Test
     void constructorRejectsAberturaEqualToFechamento() {
         assertThatThrownBy(() -> new HorarioFuncionamento(LocalTime.of(8, 0), LocalTime.of(8, 0)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test
@@ -29,7 +30,7 @@ class HorarioFuncionamentoTest {
         // 18:00-02:00) cannot be represented, since abertura must be strictly
         // before fechamento on the same day. See specs/modules/04-restaurant.md.
         assertThatThrownBy(() -> new HorarioFuncionamento(LocalTime.of(18, 0), LocalTime.of(2, 0)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DomainValidationException.class);
     }
 
     @Test

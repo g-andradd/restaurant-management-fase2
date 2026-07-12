@@ -1,5 +1,7 @@
 package br.com.fiap.restaurant.domain.model;
 
+import br.com.fiap.restaurant.domain.exception.DomainValidationException;
+
 import java.time.LocalTime;
 import java.util.Objects;
 
@@ -12,7 +14,7 @@ public final class HorarioFuncionamento {
         this.abertura = Objects.requireNonNull(abertura, "abertura must not be null");
         this.fechamento = Objects.requireNonNull(fechamento, "fechamento must not be null");
         if (!abertura.isBefore(fechamento)) {
-            throw new IllegalArgumentException("abertura must be before fechamento");
+            throw new DomainValidationException("abertura must be before fechamento");
         }
     }
 
