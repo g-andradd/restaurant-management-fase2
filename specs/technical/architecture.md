@@ -38,8 +38,12 @@ Base package: `br.com.fiap.restaurant`.
 
 ## Error handling
 
-Error responses use `ProblemDetail` (RFC 7807). Wired starting with the first
-module that exposes a real endpoint — not part of M00.
+Error responses use `ProblemDetail` (RFC 7807), via
+`infrastructure/web/advice/GlobalExceptionHandler`. Fully built out across
+M01-M05 (400/401/403/404/409/422, each with its own dedicated
+`@ExceptionHandler` and asserted status). The full contract — including the
+404-vs-422 rule — is documented once, in `CLAUDE.md`'s "Error contract"
+section; not repeated here to avoid two copies drifting apart.
 
 ## Branching
 
