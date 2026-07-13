@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: restaurant-management
+  profiles:
+    active: dev
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs

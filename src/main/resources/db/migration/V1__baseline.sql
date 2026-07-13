@@ -1,0 +1,2 @@
+-- Baseline migration. Intentionally empty: proves the Flyway + PostgreSQL
+-- pipeline is wired end-to-end in M00. First real schema starts at V2.
