@@ -194,6 +194,26 @@ for ex in $THROWN; do
 done
 
 # -----------------------------------------------------------------------------
+section "ROUTE EXTRACTION (shared by sections 10 and 12)"
+# Every controller route, normalized, computed ONCE here and reused by both
+# the Postman drift guard (10) and the README drift guard (12) - one
+# extractor, not two copies that could drift from each other.
+# -----------------------------------------------------------------------------
+CONTROLLER_ROUTES=$(
+  for f in "$PKG"/infrastructure/web/controller/*.java; do
+    [ -e "$f" ] || continue
+    prefix=$(grep -oE '@RequestMapping\("[^"]*"\)' "$f" | head -1 | sed -E 's/^@RequestMapping\("(.*)"\)$/\1/')
+    grep -oE '@(Get|Post|Put|Delete)Mapping(\("[^"]*"\))?' "$f" | while read -r ann; do
+      verb=$(echo "$ann" | sed -E 's/@(Get|Post|Put|Delete)Mapping.*/\1/' | tr '[:lower:]' '[:upper:]')
+      subpath=$(echo "$ann" | grep -oE '"[^"]*"' | tr -d '"')
+      norm=$(echo "${prefix}${subpath}" | sed -E 's/\{[a-zA-Z0-9_]+\}/{}/g')
+      echo "$verb $norm"
+    done
+  done
+)
+pass "extracted $(echo "$CONTROLLER_ROUTES" | sort -u | wc -l) distinct controller routes"
+
+# -----------------------------------------------------------------------------
 section "10. POSTMAN COLLECTION <-> CONTROLLER ROUTE DRIFT"
 # The collection is a JSON artifact `mvnw verify` never looks at. If an
 # endpoint path changes, the collection silently rots until someone runs it
@@ -204,19 +224,6 @@ COLLECTION="postman/RestaurantManagement.postman_collection.json"
 if [ ! -f "$COLLECTION" ]; then
   fail "postman collection not found at $COLLECTION"
 else
-  CONTROLLER_ROUTES=$(
-    for f in "$PKG"/infrastructure/web/controller/*.java; do
-      [ -e "$f" ] || continue
-      prefix=$(grep -oE '@RequestMapping\("[^"]*"\)' "$f" | head -1 | sed -E 's/^@RequestMapping\("(.*)"\)$/\1/')
-      grep -oE '@(Get|Post|Put|Delete)Mapping(\("[^"]*"\))?' "$f" | while read -r ann; do
-        verb=$(echo "$ann" | sed -E 's/@(Get|Post|Put|Delete)Mapping.*/\1/' | tr '[:lower:]' '[:upper:]')
-        subpath=$(echo "$ann" | grep -oE '"[^"]*"' | tr -d '"')
-        norm=$(echo "${prefix}${subpath}" | sed -E 's/\{[a-zA-Z0-9_]+\}/{}/g')
-        echo "$verb $norm"
-      done
-    done
-  )
-
   # Every request's URL is authored as "{{baseUrl}}/api/v1/..." (raw), which
   # disambiguates it from body-JSON "raw" fields (payloads never start with
   # {{baseUrl}}). "method" is assumed to precede "url" for each request, in
@@ -266,6 +273,43 @@ else
     echo "$NO_DEFAULT" | sed 's/^/    /'
   else
     pass "every \${VAR} in docker-compose.yml has a :- default"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+section "12. README ENDPOINT TABLE <-> CONTROLLER ROUTE DRIFT"
+# Same class of rot as section 10, different artifact: the README's endpoint
+# catalog is Markdown `mvnw verify` never reads. Reuses $CONTROLLER_ROUTES
+# computed once above. README rows already use the same {id}/{restaurantId}
+# bracket notation the controllers do, so no {{}}-style translation is
+# needed here (unlike the Postman JSON, which needed its own convention).
+# -----------------------------------------------------------------------------
+README_FILE="README.md"
+if [ ! -f "$README_FILE" ]; then
+  fail "README.md not found"
+else
+  README_ROUTES=$(
+    grep -E '^\| *(GET|POST|PUT|DELETE) *\|' "$README_FILE" | while IFS='|' read -r _ method route _rest; do
+      method=$(echo "$method" | tr -d ' ')
+      route=$(echo "$route" | tr -d ' ' | sed -E 's/\?.*$//')
+      norm=$(echo "$route" | sed -E 's/\{[a-zA-Z0-9_]+\}/{}/g')
+      echo "$method $norm"
+    done
+  )
+
+  MISSING_IN_README=$(comm -23 <(echo "$CONTROLLER_ROUTES" | sort -u) <(echo "$README_ROUTES" | sort -u))
+  EXTRA_IN_README=$(comm -13 <(echo "$CONTROLLER_ROUTES" | sort -u) <(echo "$README_ROUTES" | sort -u))
+
+  if [ -n "$MISSING_IN_README" ]; then
+    fail "controller route(s) missing from the README endpoint table:"
+    echo "$MISSING_IN_README" | sed 's/^/    /'
+  fi
+  if [ -n "$EXTRA_IN_README" ]; then
+    fail "README endpoint table row(s) referencing a path no controller serves:"
+    echo "$EXTRA_IN_README" | sed 's/^/    /'
+  fi
+  if [ -z "$MISSING_IN_README" ] && [ -z "$EXTRA_IN_README" ]; then
+    pass "every controller route is in the README table, and vice versa"
   fi
 fi
 

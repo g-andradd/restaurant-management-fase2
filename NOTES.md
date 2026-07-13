@@ -568,3 +568,65 @@
   coleção na interface do Postman) não precisa de toolchain Node, e
   adicionar uma para uma ferramenta de validação pontual seria exatamente
   o tipo de tooling prematuro que este projeto já evita em outros lugares.
+
+## 2026-07-13 — M07: Documentação do projeto (README)
+
+- **Leitura confirmada do brief da Fase 2 (autoritativa, fornecida pelo
+  usuário)**: o item "Documentação do projeto: descrição detalhada do
+  projeto, incluindo a arquitetura, os endpoints da API e as instruções de
+  configuração e execução" descreve CONTEÚDO, não um artefato nomeado —
+  diferente de "Collections para teste" e "Configuração Docker Compose",
+  que são citados como entregáveis próprios no mesmo brief e por isso
+  ganharam seus módulos dedicados (M06). Decisão: sem relatório técnico
+  separado (DOCX/PDF); `README.md` + `specs/` satisfazem o item.
+- **Nenhum número inventado**: os números de cobertura/teste citados no
+  README (222 testes, 96% de cobertura de linha) vieram de um
+  `./mvnw verify` rodado de verdade nesta sessão (1019/1056 linhas via
+  `target/site/jacoco/jacoco.xml`), apresentados como retrato do momento
+  COM o comando de reprodução ao lado, nunca como número permanente.
+- **`scripts/audit.sh` ganhou a seção 12**: mesma classe de problema que a
+  seção 10 já resolvia para a coleção Postman, agora para a tabela de
+  endpoints do README — Markdown que `./mvnw verify` nunca lê. Reaproveita
+  o MESMO extrator de rotas da seção 10 (hoisted para uma seção própria,
+  "ROUTE EXTRACTION", que roda uma vez e alimenta as seções 10 e 12), em
+  vez de duplicar a lógica. Rotas do README já usam a mesma notação
+  `{id}`/`{restaurantId}` das anotações Java, então a normalização é mais
+  simples que a da seção 10 (que precisava traduzir o `{{variavel}}` do
+  Postman). Verificado com o mesmo teste de quebra-e-reverte da seção 10:
+  renomeei temporariamente uma rota, seção 12 ficou vermelha (nas duas
+  direções — rota do controller ausente da tabela, e linha da tabela
+  apontando para uma rota que nenhum controller serve), revertido em
+  seguida, `bash scripts/audit.sh` voltou a sair 0.
+- **Achado real durante a derivação mecânica da coluna de status (não
+  escrita de memória)**: `AuthenticateUserUseCase` tem o MESMO bug já
+  corrigido uma vez em `CreateRestaurantUseCase` (M05) —
+  `.orElseThrow(() -> new UserTypeNotFoundException(...))` num branch
+  morto (inalcançável na prática, atrás da FK NOT NULL de
+  `users.user_type_id`), mas que mapeia para 404 em
+  `GlobalExceptionHandler`. Como `POST /api/v1/auth/login` não tem id no
+  path, um 404 ali violaria a própria regra 404-vs-422 do projeto se algum
+  dia disparasse. Fora de escopo para um módulo só de documentação
+  (seria mudança de lógica de negócio) — sinalizado como tarefa de
+  acompanhamento em vez de corrigido aqui; a tabela de endpoints do README
+  documenta o contrato PRETENDIDO (200/400/401 para o login), não esse
+  branch morto.
+- **Diagramas Mermaid validados com uma ferramenta transitória**
+  (`npx @mermaid-js/mermaid-cli`), no mesmo padrão do Newman no M06 — nada
+  adicionado como dependência do projeto. Nem `mvnw verify` nem
+  `audit.sh` conseguem pegar um erro de sintaxe Mermaid, e um diagrama
+  quebrado renderiza como uma caixa vermelha de erro no GitHub, então essa
+  validação não é opcional.
+- **Duas correções factuais pontuais em `specs/`, sem reescrever nada**:
+  `specs/product/overview.md` dizia que a regra "só Dono de Restaurante
+  pode ser dono" ainda estava "a confirmar" — falso desde o M04, corrigido
+  para citar a flag de capacidade. `specs/technical/architecture.md` dizia
+  que o tratamento de erro RFC 7807 ainda não fazia parte do M00 — frase
+  que hoje soa como "não feito ainda" quando está pronto desde o M01;
+  corrigida para apontar para o contrato completo em `CLAUDE.md`, sem
+  duplicar o conteúdo.
+- **Três fontes de verdade, sem sobreposição**: o README ganhou uma seção
+  "Decisões de Arquitetura" nova, mas CONDENSADA — decisão, porquê e
+  trade-off em poucas frases, sempre com link para o `specs/modules/NN-*.md`
+  correspondente e para o teste que prova a afirmação. O raciocínio
+  completo continua só em `specs/`/`NOTES.md`; o README aponta para lá em
+  vez de reescrever.

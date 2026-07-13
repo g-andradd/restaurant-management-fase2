@@ -13,9 +13,11 @@ restaurant owners manage their establishments and lets customers browse them.
 - **Cliente** (Customer): browses restaurants and menu items.
 
 Both actors are represented by the same `User` aggregate, distinguished by
-`UserType`. Only a user of type "Dono de Restaurante" may own a restaurant
-(business rule to be confirmed and enforced starting with the Restaurant
-module).
+`UserType`. Only a user whose type currently permits it may own a
+restaurant — enforced since M04 via a capability flag
+(`user_types.can_own_restaurant`), not by the type's name or seeded id
+(both of which `UserType` CRUD lets change, so keying on either would
+break silently). See `specs/modules/04-restaurant.md`.
 
 ## Phase 2 scope
 
