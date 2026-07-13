@@ -17,6 +17,22 @@ import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
 
 import java.util.UUID;
 
+/**
+ * Creates a {@link Restaurant} for its owner. Re-reads the owner's
+ * {@link UserType} from the database at call time, never from a JWT claim -
+ * a token's {@code userType} claim is a login-time snapshot that can go
+ * stale mid-session (see {@code RestaurantIntegrationTest.staleTokenClaimDoesNotGrantOwnership}).
+ * The ownership check keys on {@code podeSerDono()} - the capability flag -
+ * never on the type's name or seeded id, both of which are mutable via
+ * {@code UserType} CRUD. Also enforces the P0 self-ownership rule: since
+ * Phase 2 has no admin role, {@code command.ownerId()} must equal the
+ * caller's own id, or any authenticated user could create a restaurant in
+ * someone else's name. An owner whose {@code UserType} can't be resolved is
+ * treated as {@link IllegalStateException}, not a 404: {@code users.user_type_id}
+ * is {@code NOT NULL} with a foreign key, so that state is structurally
+ * impossible and a 404 here would falsely imply the URL's own target was
+ * the problem.
+ */
 public class CreateRestaurantUseCase {
 
     private final RestaurantRepository restaurantRepository;

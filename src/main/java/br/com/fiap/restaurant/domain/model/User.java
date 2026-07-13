@@ -6,6 +6,14 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * An application user. References its {@link UserType} by id
+ * ({@code userTypeId}) rather than holding an embedded copy, so a change to
+ * that type (e.g. its {@code podeSerDono} flag) is visible to every user of
+ * that type immediately, without syncing N rows - the same reasoning that
+ * makes a JWT's {@code userType} claim a snapshot that must never be
+ * trusted for an authorization decision (see {@code AuthenticateUserUseCase}).
+ */
 public final class User {
 
     private final UUID id;

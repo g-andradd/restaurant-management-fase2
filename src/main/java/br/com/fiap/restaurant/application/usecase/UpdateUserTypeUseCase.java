@@ -7,6 +7,10 @@ import br.com.fiap.restaurant.domain.exception.UserTypeNotFoundException;
 import br.com.fiap.restaurant.domain.model.UserType;
 import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
 
+/**
+ * Renames/updates a {@link UserType}, checking name uniqueness excluding
+ * itself (409 on conflict with another type's name).
+ */
 public class UpdateUserTypeUseCase {
 
     private final UserTypeRepository userTypeRepository;

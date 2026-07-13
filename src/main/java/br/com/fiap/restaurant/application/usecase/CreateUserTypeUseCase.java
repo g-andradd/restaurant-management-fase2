@@ -6,6 +6,10 @@ import br.com.fiap.restaurant.domain.exception.UserTypeNameAlreadyExistsExceptio
 import br.com.fiap.restaurant.domain.model.UserType;
 import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
 
+/**
+ * Creates a {@link UserType} after checking name uniqueness (409 on
+ * conflict).
+ */
 public class CreateUserTypeUseCase {
 
     private final UserTypeRepository userTypeRepository;

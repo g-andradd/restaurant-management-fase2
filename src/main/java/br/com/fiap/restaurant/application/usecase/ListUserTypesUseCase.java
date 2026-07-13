@@ -7,6 +7,9 @@ import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
 
 import java.util.List;
 
+/**
+ * Paged listing of user types.
+ */
 public class ListUserTypesUseCase {
 
     private final UserTypeRepository userTypeRepository;

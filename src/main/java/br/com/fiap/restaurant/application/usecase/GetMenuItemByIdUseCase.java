@@ -9,6 +9,13 @@ import br.com.fiap.restaurant.domain.repository.RestaurantRepository;
 
 import java.util.UUID;
 
+/**
+ * Fetches one {@link MenuItem} scoped to a {@code restaurantId}. A
+ * mismatched {@code restaurantId} - the item exists, but under a different
+ * restaurant - yields the exact same 404 as the item not existing at all,
+ * never a 403: a 403 would leak that the item exists somewhere else. See
+ * {@link MenuItemNotFoundException}.
+ */
 public class GetMenuItemByIdUseCase {
 
     private final MenuItemRepository menuItemRepository;

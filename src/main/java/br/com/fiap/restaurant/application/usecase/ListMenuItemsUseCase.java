@@ -9,6 +9,12 @@ import br.com.fiap.restaurant.domain.repository.RestaurantRepository;
 
 import java.util.UUID;
 
+/**
+ * Paged listing of a restaurant's menu items. Validates the restaurant
+ * itself exists before listing (404 if not) - the parent-resource-exists
+ * check, distinct from the by-id ownership trap in
+ * {@code GetMenuItemByIdUseCase}.
+ */
 public class ListMenuItemsUseCase {
 
     private final MenuItemRepository menuItemRepository;
