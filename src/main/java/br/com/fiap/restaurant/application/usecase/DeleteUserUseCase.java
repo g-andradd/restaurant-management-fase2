@@ -7,6 +7,13 @@ import br.com.fiap.restaurant.domain.repository.UserRepository;
 
 import java.util.UUID;
 
+/**
+ * Deletes a {@code User}, blocked with a 409 if the user still owns any
+ * restaurant ({@code existsByOwnerId}) - Phase 2 has no cascade and no
+ * reassignment path for a user's restaurants, so this is a hard block, not
+ * a warning. Checking explicitly here means the foreign key never has to
+ * surface as an unhandled 500.
+ */
 public class DeleteUserUseCase {
 
     private final UserRepository userRepository;

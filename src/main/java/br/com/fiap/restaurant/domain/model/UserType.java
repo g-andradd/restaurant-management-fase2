@@ -5,6 +5,14 @@ import br.com.fiap.restaurant.domain.exception.DomainValidationException;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * A role a {@link User} can have. {@code podeSerDono} is the exact
+ * capability flag {@code CreateRestaurantUseCase} keys restaurant
+ * ownership on - never this type's {@code nome} or id, both of which are
+ * mutable via this same class's CRUD. Accepted gap: {@link #definirPodeSerDono}
+ * has no retroactive check - flipping the flag does not revisit users or
+ * restaurants that already relied on its previous value.
+ */
 public final class UserType {
 
     private final UUID id;

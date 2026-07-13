@@ -14,6 +14,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Extracts and validates a Bearer JWT per request. On
+ * {@link InvalidTokenException}, deliberately clears the security context
+ * and lets the chain continue rather than failing fast here - so a bad
+ * token produces the exact same 401 (via {@code AuthorizationFilter} then
+ * {@code ExceptionTranslationFilter} then
+ * {@link ProblemDetailAuthenticationEntryPoint}) as no token at all. One
+ * 401 path, not two.
+ */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";

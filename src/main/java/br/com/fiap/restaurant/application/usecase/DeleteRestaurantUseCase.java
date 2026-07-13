@@ -10,6 +10,17 @@ import br.com.fiap.restaurant.domain.repository.RestaurantRepository;
 
 import java.util.UUID;
 
+/**
+ * Deletes a {@link Restaurant} owned by the caller, cascading its
+ * {@code MenuItem}s first. The cascade is explicit and transactional
+ * (not a database {@code ON DELETE CASCADE}) because a menu item is
+ * composed - it has no existence independent of its restaurant - unlike
+ * {@code User}/{@code UserType}, which are association-only and block
+ * deletion with a 409 instead. Order matters (items before the restaurant,
+ * driven by the foreign key); wrapping both writes in one
+ * {@code TransactionRunner.run} call ensures a failure between them can
+ * never leave a half-deleted state.
+ */
 public class DeleteRestaurantUseCase {
 
     private final RestaurantRepository restaurantRepository;

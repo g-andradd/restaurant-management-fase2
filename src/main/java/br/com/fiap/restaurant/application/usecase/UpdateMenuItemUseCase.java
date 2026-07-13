@@ -13,6 +13,14 @@ import br.com.fiap.restaurant.domain.repository.RestaurantRepository;
 
 import java.util.UUID;
 
+/**
+ * Updates a {@link MenuItem} scoped to a {@code restaurantId}, owner-only.
+ * Item existence/match to the restaurant is checked <strong>before</strong>
+ * the ownership check, unconditionally: reversing that order would let a
+ * non-owner distinguish "item exists under another restaurant" (403) from
+ * "item doesn't exist" (404) - the same anti-leak trap as
+ * {@link GetMenuItemByIdUseCase}, applied to the write path.
+ */
 public class UpdateMenuItemUseCase {
 
     private final MenuItemRepository menuItemRepository;

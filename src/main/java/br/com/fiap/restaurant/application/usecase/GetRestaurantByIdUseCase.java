@@ -11,6 +11,10 @@ import br.com.fiap.restaurant.domain.repository.UserRepository;
 
 import java.util.UUID;
 
+/**
+ * Fetches one {@link Restaurant} together with its owner's summary in a
+ * single call, sparing the caller a second round trip.
+ */
 public class GetRestaurantByIdUseCase {
 
     private final RestaurantRepository restaurantRepository;

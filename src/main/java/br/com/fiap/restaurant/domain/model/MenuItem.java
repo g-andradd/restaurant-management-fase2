@@ -7,6 +7,13 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * A single entry on a restaurant's menu, scoped to exactly one
+ * {@code restaurantId}. {@code preco} must be strictly greater than zero.
+ * {@code restaurantId} is fixed at {@link #create} for the same reason as
+ * {@link Restaurant}'s {@code ownerId}: there is no "move this item to
+ * another restaurant" use case, so {@link #atualizarDados} excludes it.
+ */
 public final class MenuItem {
 
     private final UUID id;

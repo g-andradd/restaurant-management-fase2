@@ -11,6 +11,11 @@ import br.com.fiap.restaurant.domain.repository.RestaurantRepository;
 
 import java.util.UUID;
 
+/**
+ * Deletes a {@link MenuItem} scoped to a {@code restaurantId}, owner-only.
+ * Same anti-leak trap as {@link GetMenuItemByIdUseCase}: a mismatched
+ * {@code restaurantId} yields 404, never 403.
+ */
 public class DeleteMenuItemUseCase {
 
     private final MenuItemRepository menuItemRepository;

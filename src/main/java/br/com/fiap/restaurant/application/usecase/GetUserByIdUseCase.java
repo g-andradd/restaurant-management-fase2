@@ -10,6 +10,10 @@ import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
 
 import java.util.UUID;
 
+/**
+ * Fetches one {@link User} together with its resolved {@link UserType}
+ * summary in a single call.
+ */
 public class GetUserByIdUseCase {
 
     private final UserRepository userRepository;
