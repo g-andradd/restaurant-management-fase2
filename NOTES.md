@@ -630,3 +630,69 @@
   correspondente e para o teste que prova a afirmação. O raciocínio
   completo continua só em `specs/`/`NOTES.md`; o README aponta para lá em
   vez de reescrever.
+
+## 2026-07-13 — fix(M02): flakiness em JwtTokenProviderTest.tamperedTokenIsRejected
+
+- **Causa raiz real, não só "às vezes falha"**: uma assinatura HS256 tem 32
+  bytes → 43 caracteres base64url (43×6 = 258 bits para 256 bits de dado),
+  então o último caractere carrega 2 bits de padding que a codificação
+  canônica sempre zera — restringindo o último caractere a um de 16
+  valores possíveis, cada um compartilhando os mesmos 4 bits significativos
+  com exatamente um outro caractere do alfabeto completo (ex.: `Y` e `a`).
+  O teste antigo trocava o último caractere por um valor fixo
+  (`token.endsWith("a") ? "b" : "a"`) — sempre que a assinatura real já
+  terminava no caractere "irmão" daquele valor fixo, o token "adulterado"
+  decodificava para os mesmos 32 bytes e validava normalmente,
+  derrubando a asserção. Um flake de ~1 em 16 (6,25%).
+- **Corrigido substituindo por dois casos determinísticos**: o teste já
+  existente `tokenSignedWithDifferentKeyIsRejected` (chave diferente) já
+  cobria um dos dois casos pedidos — mantido como está, sem duplicar.
+  Adicionado `tamperedPayloadIsRejected`: decodifica o payload, forja uma
+  claim, recodifica e reagrupa com a assinatura ORIGINAL — o ataque de
+  verdade que essa checagem existe para prevenir, e determinístico porque
+  não depende de qual caractere específico uma assinatura aleatória
+  termina tendo. Comentário deixado no código explicando por que adulterar
+  o último caractere da assinatura é a abordagem errada, para ninguém
+  reintroduzir.
+- **Verificado com 20 execuções completas de `./mvnw verify`**: 19/20
+  `BUILD SUCCESS`; a única falha foi um `ContainerLaunchException` do
+  Testcontainers ao subir o Postgres (contenção de recursos por rodar
+  `verify` repetidamente em sequência rápida), sem nenhuma menção a
+  `JwtTokenProviderTest` em nenhuma das 20 execuções — confirmando que a
+  causa era mesmo a lógica do teste, não o ambiente.
+
+## 2026-07-13 — M08: Release 1.0.0
+
+- **Pré-voo verificado antes de tocar em qualquer arquivo** (todos
+  confirmados, não assumidos): `develop` local idêntico a
+  `origin/develop`, contendo o merge de M07 e do fix acima no topo;
+  `./mvnw verify` verde (222 testes, 0 falhas); `bash scripts/audit.sh`
+  saindo 0 (12 seções); `docker compose down -v && docker compose up
+  --build` subindo limpo sem nenhum `.env`, as 6 migrations aplicando do
+  zero.
+- **Versão**: `${revision}` em `pom.xml` de `0.0.1-SNAPSHOT` para `1.0.0`.
+  Confirmado que o `flatten-maven-plugin` produz um pom efetivo e um JAR
+  corretos com a versão nova (`.flattened-pom.xml` e
+  `META-INF/MANIFEST.MF` do artefato gerado, ambos `1.0.0`) — `./mvnw
+  verify` continua verde depois da mudança.
+- **Varredura final do README**: sem TODOs remanescentes, todos os links
+  relativos para `specs/` resolvendo de verdade (checado
+  programaticamente, arquivo por arquivo), e os números de cobertura/testes
+  já citados (222 testes, 96% de cobertura de linha, 1019/1056 linhas)
+  conferidos contra uma execução real de `./mvnw verify` nesta sessão —
+  bateram exatamente, sem precisar de atualização.
+- **Fluxo de branch desta vez foi diferente do padrão do projeto**: por
+  instrução explícita, os comandos de git da release (criar
+  `release/1.0.0`, commitar, mergear em `main`, taguear, dar push) foram
+  só impressos para o Gabriel rodar — inclusive a criação do branch, que
+  em todo módulo anterior era feita pelo assistente. As mudanças de
+  arquivo desta entrega (bump de versão + varredura) ficaram nas
+  mudanças não commitadas do working directory (`develop`), prontas para
+  virar o primeiro commit de `release/1.0.0` assim que o Gabriel rodar a
+  sequência.
+- **O que `main` passa a conter depois deste merge**: o projeto completo
+  e funcional pela primeira vez — os quatro agregados (User, UserType,
+  Restaurant, MenuItem) com CRUD completo e autenticação JWT, a coleção
+  Postman, a validação de Docker Compose, e o README reescrito com
+  diagramas, catálogo de endpoints e decisões de arquitetura. Até este
+  ponto, `main` só tinha o README vazio do bootstrap.
