@@ -5,6 +5,13 @@ import br.com.fiap.restaurant.domain.exception.DomainValidationException;
 import java.time.LocalTime;
 import java.util.Objects;
 
+/**
+ * A restaurant's opening/closing time window. The constructor enforces
+ * {@code abertura} strictly before {@code fechamento} - an accepted
+ * limitation of this rule is that overnight/past-midnight hours (e.g.
+ * open 22:00, close 02:00) cannot be represented at all, not just
+ * disallowed by convention (see {@code specs/modules/04-restaurant.md}).
+ */
 public final class HorarioFuncionamento {
 
     private final LocalTime abertura;

@@ -14,6 +14,12 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Paged listing of users. Batch-resolves the distinct {@link UserType}s of
+ * the page via {@code UserTypeRepository.findAllById} in one call, instead
+ * of one lookup per user (N+1) - checked independently by
+ * {@code scripts/audit.sh} section 8.
+ */
 public class ListUsersUseCase {
 
     private final UserRepository userRepository;

@@ -13,6 +13,14 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 
+/**
+ * {@link TokenProvider} implemented with {@code io.jsonwebtoken} (HS256).
+ * Claims passed to {@link #generateToken} are embedded as a snapshot at
+ * issue time - nothing here re-checks the database on validation, by
+ * design; keeping a claim fresh for the life of a token is explicitly the
+ * application layer's job, not this class's (see the {@code UserType}
+ * re-read in {@code CreateRestaurantUseCase}).
+ */
 @Component
 public class JwtTokenProvider implements TokenProvider {
 

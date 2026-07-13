@@ -6,6 +6,14 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * A restaurant owned by exactly one {@link User}. The owner is fixed at
+ * {@link #create}: there is no use case for transferring a restaurant to a
+ * different owner in Phase 2, which is why {@code ownerId} is {@code final}
+ * and {@link #atualizarDados} has no parameter for it. {@link #create}
+ * mints a brand-new entity; {@link #reconstitute} rehydrates one already
+ * persisted, without re-running creation-time defaults such as timestamps.
+ */
 public final class Restaurant {
 
     private final UUID id;

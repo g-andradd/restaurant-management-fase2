@@ -696,3 +696,55 @@
   Postman, a validação de Docker Compose, e o README reescrito com
   diagramas, catálogo de endpoints e decisões de arquitetura. Até este
   ponto, `main` só tinha o README vazio do bootstrap.
+
+## 2026-07-13 — M09: Higienização
+
+- **Javadoc de classe adicionado a 38 classes** antes sem documentação em
+  `domain/model` (6), `domain/repository` (4), `application/port` (3),
+  `application/usecase` (20) e `infrastructure/security`+`config` (5) — as
+  outras 8 já tinham Javadoc de qualidade (explicava o PORQUÊ, não
+  reafirmava o nome) e foram deixadas como estavam. Contagem real
+  divergiu ligeiramente do que a auditoria independente havia apontado:
+  `application/usecase` tem 21 classes, não 22 (`AuthenticateUserUseCase`
+  já documentada, então 20 novas, não 21); `infrastructure/config` já
+  estava 1/2 (`BeanConfiguration` já documentada), então só
+  `SpringTransactionRunner` precisava de doc. Verificado que não existe
+  `maven-javadoc-plugin` nem doclint no `pom.xml` — texto de Javadoc não é
+  compilado/lintado pelo build, então zero risco de quebrar `./mvnw
+  verify`.
+- **Os números do README eram verdadeiros — a correção certa era travá-los,
+  não apagá-los.** Confirmado por grep com word-boundary
+  (`grep -rhoE '@Test\b' src/test/java`, que corretamente NÃO casa dentro
+  de `@Testcontainers`): 222 métodos `@Test` reais, batendo exatamente com
+  o que o README já afirmava. Em vez de trocar a snapshot por só o gate
+  de 80%, a seção 13 do `audit.sh` agora VERIFICA a contagem de testes e a
+  cobertura reais (via `target/site/jacoco/jacoco.xml`) contra o que o
+  README afirma, a cada execução — falha em qualquer divergência, e WARN
+  (nunca passa em silêncio) se `jacoco.xml` não existir ainda. O README
+  passou a citar o gate de 80% como a garantia permanente E manter o
+  número medido como evidência concreta, cruzando explicitamente para a
+  seção 13 como o mecanismo que mantém esse número honesto.
+- **Não-vacuidade da seção 13 provada três vezes**: contagem de testes
+  errada (999 em vez de 222) → FAIL; percentual de cobertura errado (50%
+  em vez de 96%) → FAIL; `jacoco.xml` temporariamente movido → WARN (nunca
+  um PASS silencioso). Todas revertidas, `audit.sh` voltou a sair 0.
+- **Seção 9 do `audit.sh` (o WARN permanente sobre `IllegalStateException`)
+  foi silenciada por whitelist explícita**, não por enfraquecer a
+  detecção: um `case` de uma linha nomeando a exceção, com comentário
+  explicando por quê (é o fallback deliberado de dados corrompidos em
+  `CreateRestaurantUseCase`, desde M04). Esse WARN disparava em toda
+  execução desde M05; agora o restante da seção volta a ser sinal
+  relevante.
+- **Convenção de nomenclatura documentada, não refatorada**: nova seção
+  `## Naming conventions` em `CLAUDE.md` (depois de "Architecture", antes
+  de "Error contract") e uma subseção equivalente na seção "Arquitetura"
+  do README — inglês para nomenclatura técnica, português para o
+  vocabulário de domínio do próprio enunciado (`nome`, `senha`, `preco`,
+  `atualizarDados`, `renomear`, `podeSerDono`, "Dono de Restaurante" etc.),
+  como *ubiquitous language* do DDD. Confirmado via `git diff --stat`:
+  zero identificadores renomeados em qualquer arquivo — todo o diff é
+  adição de comentários/Javadoc, mais os dois ajustes de `audit.sh`/README
+  descritos acima.
+- **Verificação final**: `./mvnw verify` — BUILD SUCCESS, 222 testes, 0
+  falhas, gate de cobertura mantido. `bash scripts/audit.sh` — 13 seções,
+  0 falhas.

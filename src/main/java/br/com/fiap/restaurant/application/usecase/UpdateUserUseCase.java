@@ -13,6 +13,12 @@ import br.com.fiap.restaurant.domain.model.UserType;
 import br.com.fiap.restaurant.domain.repository.UserRepository;
 import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
 
+/**
+ * Updates a {@link User}'s profile fields, checking email/login uniqueness
+ * excluding itself. Password change is optional - {@code command.senha()}
+ * is only applied when non-blank, leaving the existing hash untouched
+ * otherwise.
+ */
 public class UpdateUserUseCase {
 
     private final UserRepository userRepository;
