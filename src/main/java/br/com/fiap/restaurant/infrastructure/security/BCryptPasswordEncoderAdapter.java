@@ -4,6 +4,10 @@ import br.com.fiap.restaurant.application.port.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
+/**
+ * Thin adapter satisfying {@link PasswordEncoder}'s port contract with
+ * Spring Security's {@code BCryptPasswordEncoder}.
+ */
 @Component
 public class BCryptPasswordEncoderAdapter implements PasswordEncoder {
 

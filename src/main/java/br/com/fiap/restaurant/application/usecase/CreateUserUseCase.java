@@ -12,6 +12,11 @@ import br.com.fiap.restaurant.domain.model.UserType;
 import br.com.fiap.restaurant.domain.repository.UserRepository;
 import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
 
+/**
+ * Registers a new {@link User}, checking email/login uniqueness. An
+ * unresolvable {@code userTypeId} is 422, not 404: it is a reference
+ * inside the request body, not the URL's own target.
+ */
 public class CreateUserUseCase {
 
     private final UserRepository userRepository;

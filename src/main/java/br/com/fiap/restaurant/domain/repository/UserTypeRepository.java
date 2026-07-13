@@ -7,6 +7,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Persistence contract for {@link UserType}. {@link #findAllById} exists
+ * specifically so {@code ListUsersUseCase} can batch-resolve every distinct
+ * type referenced by a page of users in one call, avoiding an N+1 query per
+ * user (checked independently by {@code scripts/audit.sh} section 8).
+ */
 public interface UserTypeRepository {
 
     UserType save(UserType userType);

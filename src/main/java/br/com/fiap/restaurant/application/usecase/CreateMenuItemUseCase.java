@@ -12,6 +12,11 @@ import br.com.fiap.restaurant.domain.repository.RestaurantRepository;
 
 import java.util.UUID;
 
+/**
+ * Creates a {@link MenuItem} under a restaurant. Ownership is checked
+ * before creation - only the restaurant's current owner may add items to
+ * it.
+ */
 public class CreateMenuItemUseCase {
 
     private final MenuItemRepository menuItemRepository;

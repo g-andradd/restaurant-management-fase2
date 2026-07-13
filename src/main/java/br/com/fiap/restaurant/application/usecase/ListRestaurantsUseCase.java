@@ -14,6 +14,12 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Paged listing of restaurants. Batch-resolves the distinct owners of the
+ * page via {@code UserRepository.findAllById} in one call, instead of one
+ * lookup per restaurant (N+1) - checked independently by
+ * {@code scripts/audit.sh} section 8.
+ */
 public class ListRestaurantsUseCase {
 
     private final RestaurantRepository restaurantRepository;

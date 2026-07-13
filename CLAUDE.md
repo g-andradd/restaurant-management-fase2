@@ -60,6 +60,20 @@ the same invariants independently of ArchUnit, plus structural checks
 ArchUnit can't express — see "Definition of Done" below). Do not weaken
 either to make code pass.
 
+## Naming conventions
+
+English for technical/structural naming — classes, packages, layers,
+method names that describe mechanics (`create`, `reconstitute`, `execute`,
+`findById`). Portuguese for domain vocabulary the brief itself uses —
+field/method names like `nome`, `senha`, `preco`, `atualizarDados`,
+`renomear`, `podeSerDono`, and terms like "Dono de Restaurante", "Tipo de
+Cozinha", "Horário de Funcionamento". This is Domain-Driven Design's
+ubiquitous-language principle: the domain vocabulary should match the
+language the business brief and stakeholders actually use, not be
+translated into English and back. It looks like inconsistency at a
+glance; it is a deliberate choice, and existing Portuguese domain
+identifiers are not to be renamed.
+
 ## Error contract
 
 All errors are RFC 7807 `ProblemDetail`, produced by

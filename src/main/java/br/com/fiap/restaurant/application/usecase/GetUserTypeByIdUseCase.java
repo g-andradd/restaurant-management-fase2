@@ -6,6 +6,9 @@ import br.com.fiap.restaurant.domain.repository.UserTypeRepository;
 
 import java.util.UUID;
 
+/**
+ * Fetches one {@link UserType} by id.
+ */
 public class GetUserTypeByIdUseCase {
 
     private final UserTypeRepository userTypeRepository;

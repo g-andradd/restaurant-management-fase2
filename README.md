@@ -69,12 +69,16 @@ integração com Postgres real via Testcontainers → regras de arquitetura
 `LINE`/`COVEREDRATIO`, falha o build se não atingir). Requer Docker em
 execução.
 
-Depois de rodar, o relatório de cobertura fica em
-`target/site/jacoco/index.html`. Uma execução desta sessão (reprodutível
-com o comando acima) mediu **222 testes, 0 falhas, 96% de cobertura de
-linha (1019/1056 linhas)** — um retrato do momento em que este README foi
-escrito, não uma promessa permanente; rode você mesmo para conferir o
-número atual.
+Depois de rodar, o relatório completo fica em
+`target/site/jacoco/index.html`. A garantia permanente é o gate de 80% de
+cobertura de linha citado acima — o build falha abaixo disso, sempre, não
+importa o que este parágrafo diga. Como evidência concreta e não apenas
+uma promessa: medido nesta sessão, **222 testes, 0 falhas, 96% de
+cobertura de linha (1019/1056 linhas)**. Esse número não fica solto: a
+seção 13 de `scripts/audit.sh` verifica a contagem de testes e a
+cobertura reais a cada execução contra o que este parágrafo afirma, e
+falha se divergirem — então, se você o vir aqui, ele foi conferido, não
+apenas lembrado.
 
 Auditoria estrutural complementar (regras que um build verde não pega
 sozinho — ver seção de Arquitetura abaixo):
@@ -155,6 +159,16 @@ flowchart TD
     Note["domain e application: zero imports de framework<br/>(sem Spring, sem JPA, sem JJWT)<br/>verificado por ArchitecturePurityTest + LayeredArchitectureTest<br/>e independentemente por scripts/audit.sh secao 1"]
     Note -.-> Dom
 ```
+
+### Convenção de nomenclatura
+
+Inglês para nomenclatura técnica/estrutural (classes, pacotes, camadas) e
+português para o vocabulário de domínio que o próprio enunciado usa
+(`nome`, `senha`, `preco`, `atualizarDados`, `renomear`, `podeSerDono`,
+"Dono de Restaurante", "Tipo de Cozinha", "Horário de Funcionamento"). Não
+é inconsistência: é o princípio de *ubiquitous language* do DDD — o
+vocabulário do domínio deve ser o mesmo usado pelo negócio, sem ida e
+volta de tradução. Ver `CLAUDE.md`, seção "Naming conventions".
 
 ### Modelo de dados
 

@@ -15,6 +15,12 @@ import br.com.fiap.restaurant.domain.repository.UserRepository;
 
 import java.util.UUID;
 
+/**
+ * Updates a {@link Restaurant}'s mutable fields, owner-only. Owner
+ * reassignment is out of scope in Phase 2 - mirrors
+ * {@code Restaurant.atualizarDados}'s immutable-owner invariant, so
+ * {@code command} carries no owner field to change.
+ */
 public class UpdateRestaurantUseCase {
 
     private final RestaurantRepository restaurantRepository;

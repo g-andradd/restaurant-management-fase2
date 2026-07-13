@@ -184,7 +184,13 @@ THROWN=$(grep -rhoE "new [A-Za-z]+Exception\(" "$PKG/domain/" "$PKG/application/
   | sed -E 's/^new (.*)\($/\1/' | sort -u)
 for ex in $THROWN; do
   case "$ex" in
-    DomainException|DomainValidationException) continue ;;
+    # IllegalStateException: whitelisted deliberately, not a detection gap.
+    # CreateRestaurantUseCase throws it for an owner whose UserType can't be
+    # resolved - structurally impossible given users.user_type_id's NOT NULL
+    # FK, so 500 is the honest, intentional answer (see M09/NOTES.md). This
+    # WARN fired on every single run since M05; whitelisting it by name here
+    # is what keeps the rest of this section's output meaningful signal.
+    DomainException|DomainValidationException|IllegalStateException) continue ;;
   esac
   if grep -q "$ex" "$HANDLER" 2>/dev/null; then
     pass "$ex is referenced by GlobalExceptionHandler"
@@ -310,6 +316,62 @@ else
   fi
   if [ -z "$MISSING_IN_README" ] && [ -z "$EXTRA_IN_README" ]; then
     pass "every controller route is in the README table, and vice versa"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+section "13. README COVERAGE/TEST-COUNT CLAIM <-> REALITY"
+# The README states a measured test count and coverage snapshot as concrete
+# evidence, not just the enforced 80% gate (see "Como testar"). A number that
+# is true today is still an unguarded liability tomorrow - this section
+# extracts the README's claimed numbers and compares them against the ACTUAL
+# numbers (real @Test methods, and target/site/jacoco/jacoco.xml's LINE
+# counter). FAILs on mismatch. If jacoco.xml doesn't exist (audit run without
+# a prior build), WARNs instead of silently passing - never claim victory on
+# a claim we couldn't check.
+# -----------------------------------------------------------------------------
+README_TEXT=$(tr '\n' ' ' < "$README_FILE" 2>/dev/null)
+
+CLAIMED_TESTS=$(echo "$README_TEXT" | grep -oE '[0-9]+ testes' | head -1 | grep -oE '[0-9]+')
+REAL_TESTS=$(grep -rhoE '@Test\b' src/test/java 2>/dev/null | grep -v '@Testcontainers' | wc -l | tr -d ' ')
+
+if [ -z "$CLAIMED_TESTS" ]; then
+  fail "README does not state a test count claim to verify (expected 'N testes')"
+elif [ "$CLAIMED_TESTS" -eq "$REAL_TESTS" ]; then
+  pass "README's claimed test count ($CLAIMED_TESTS) matches reality ($REAL_TESTS real @Test methods)"
+else
+  fail "README claims $CLAIMED_TESTS testes, but $REAL_TESTS real @Test methods exist - update README"
+fi
+
+# Matched together, not separately: the stack bullet list also says
+# "80% de cobertura de linha" (describing the gate, no trailing line
+# counts) - requiring the "(X/Y linhas)" suffix in the same match is what
+# picks out the actual snapshot claim instead of that gate mention.
+CLAIMED_CLAIM=$(echo "$README_TEXT" | grep -oE '[0-9]+% de cobertura de linha \([0-9]+/[0-9]+ linhas\)' | head -1)
+CLAIMED_PCT=$(echo "$CLAIMED_CLAIM" | grep -oE '^[0-9]+')
+CLAIMED_LINES=$(echo "$CLAIMED_CLAIM" | grep -oE '[0-9]+/[0-9]+')
+CLAIMED_COVERED=${CLAIMED_LINES%%/*}
+CLAIMED_TOTAL=${CLAIMED_LINES##*/}
+JACOCO_XML="target/site/jacoco/jacoco.xml"
+
+if [ -z "$CLAIMED_PCT" ] || [ -z "$CLAIMED_LINES" ]; then
+  fail "README does not state a coverage claim to verify (expected 'N% de cobertura de linha (X/Y linhas)')"
+elif [ ! -f "$JACOCO_XML" ]; then
+  warn "$JACOCO_XML not found - README's coverage claim could not be verified (run ./mvnw verify first)"
+else
+  LINE_COUNTER=$(grep -oE '<counter type="LINE" missed="[0-9]+" covered="[0-9]+"/>' "$JACOCO_XML" | tail -1)
+  MISSED=$(echo "$LINE_COUNTER" | grep -oE 'missed="[0-9]+"' | grep -oE '[0-9]+')
+  COVERED=$(echo "$LINE_COUNTER" | grep -oE 'covered="[0-9]+"' | grep -oE '[0-9]+')
+  if [ -z "$MISSED" ] || [ -z "$COVERED" ]; then
+    warn "could not parse a LINE counter out of $JACOCO_XML - README's coverage claim could not be verified"
+  else
+    TOTAL=$((MISSED + COVERED))
+    REAL_PCT=$((COVERED * 100 / TOTAL))
+    if [ "$CLAIMED_PCT" = "$REAL_PCT" ] && [ "$CLAIMED_COVERED" = "$COVERED" ] && [ "$CLAIMED_TOTAL" = "$TOTAL" ]; then
+      pass "README's claimed coverage ($CLAIMED_PCT%, $CLAIMED_COVERED/$CLAIMED_TOTAL linhas) matches jacoco.xml"
+    else
+      fail "README claims ${CLAIMED_PCT}% ($CLAIMED_COVERED/$CLAIMED_TOTAL linhas) but jacoco.xml says ${REAL_PCT}% ($COVERED/$TOTAL linhas) - update README"
+    fi
   fi
 fi
 

@@ -6,6 +6,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Persistence contract for {@link MenuItem}. {@link #deleteByRestaurantId}
+ * exists specifically so {@code DeleteRestaurantUseCase} can cascade-delete
+ * a restaurant's items explicitly and transactionally before deleting the
+ * restaurant itself - it is not a generic bulk-delete utility.
+ */
 public interface MenuItemRepository {
 
     MenuItem save(MenuItem menuItem);
