@@ -20,7 +20,7 @@
     <description>Restaurant Management System - FIAP Pos Tech Java Architecture Tech Challenge, Phase 2</description>
 
     <properties>
-        <revision>0.0.1-SNAPSHOT</revision>
+        <revision>1.0.0</revision>
         <java.version>21</java.version>
         <maven.compiler.release>21</maven.compiler.release>
         <jjwt.version>0.12.6</jjwt.version>
